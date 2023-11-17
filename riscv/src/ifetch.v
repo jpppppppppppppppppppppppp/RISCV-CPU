@@ -120,10 +120,7 @@ module ifetch (
             inst    <= 32'b0;
             status  <= 1'b0;
         end
-        else if (!rdy)begin
-            ;
-        end
-        else begin
+        else if (rdy) begin
             if (rollback_config) begin
                 inst_rdy    <= 1'b0;
                 PC  <= rollback_pc;
