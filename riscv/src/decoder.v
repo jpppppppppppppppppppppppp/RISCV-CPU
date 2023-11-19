@@ -36,6 +36,7 @@ module decoder (
     output  reg             done,
     output  reg     [6:0]   opcode,
     output  reg     [2:0]   precise,
+    output  reg             moreprecise,
     output  reg     [3:0]   rd,
     output  reg     [31:0]  rs1_val,
     output  reg             rs1_need_rob,
@@ -45,6 +46,7 @@ module decoder (
     output  reg     [3:0]   rs2_rob_id,
     output  reg     [31:0]  imm,
     output  reg             lsb_config,
+    output  reg             lsb_store_or_load,  // 1 means store
     output  reg             rs_config,
     output  reg     [3:0]   rob_need,
     output  reg     [31:0]  pc, // For JALR
@@ -70,25 +72,25 @@ module decoder (
     // |  imm[11:5]   |     rs2     |     rs1     | 000 |  imm[4:0]   | 0100011 | SB        √
     // |  imm[11:5]   |     rs2     |     rs1     | 001 |  imm[4:0]   | 0100011 | SH        √
     // |  imm[11:5]   |     rs2     |     rs1     | 010 |  imm[4:0]   | 0100011 | SW        √
-    // |         imm[11:0]          |     rs1     | 000 |     rd      | 0010011 | ADDI
-    // |         imm[11:0]          |     rs1     | 010 |     rd      | 0010011 | SLTI
-    // |         imm[11:0]          |     rs1     | 011 |     rd      | 0010011 | SLTIU
-    // |         imm[11:0]          |     rs1     | 100 |     rd      | 0010011 | XORI
-    // |         imm[11:0]          |     rs1     | 110 |     rd      | 0010011 | ORI
-    // |         imm[11:0]          |     rs1     | 111 |     rd      | 0010011 | ANDI
-    // |   0000000    |    shamt    |     rs1     | 001 |     rd      | 0010011 | SLLI
-    // |   0000000    |    shamt    |     rs1     | 101 |     rd      | 0010011 | SRLI
-    // |   0100000    |    shamt    |     rs1     | 101 |     rd      | 0010011 | SRAI
-    // |   0000000    |     rs2     |     rs1     | 000 |     rd      | 0110011 | ADD
-    // |   0100000    |     rs2     |     rs1     | 000 |     rd      | 0110011 | SUB
-    // |   0000000    |     rs2     |     rs1     | 001 |     rd      | 0110011 | SLL
-    // |   0000000    |     rs2     |     rs1     | 010 |     rd      | 0110011 | SLT
-    // |   0000000    |     rs2     |     rs1     | 011 |     rd      | 0110011 | SLTU
-    // |   0000000    |     rs2     |     rs1     | 100 |     rd      | 0110011 | XOR
-    // |   0000000    |     rs2     |     rs1     | 101 |     rd      | 0110011 | SRL
-    // |   0100000    |     rs2     |     rs1     | 101 |     rd      | 0110011 | SRA
-    // |   0000000    |     rs2     |     rs1     | 110 |     rd      | 0110011 | OR
-    // |   0000000    |     rs2     |     rs1     | 111 |     rd      | 0110011 | AND
+    // |         imm[11:0]          |     rs1     | 000 |     rd      | 0010011 | ADDI      √
+    // |         imm[11:0]          |     rs1     | 010 |     rd      | 0010011 | SLTI      √
+    // |         imm[11:0]          |     rs1     | 011 |     rd      | 0010011 | SLTI      √
+    // |         imm[11:0]          |     rs1     | 100 |     rd      | 0010011 | XORI      √
+    // |         imm[11:0]          |     rs1     | 110 |     rd      | 0010011 | ORI       √
+    // |         imm[11:0]          |     rs1     | 111 |     rd      | 0010011 | ANDI      √
+    // |   0000000    |    shamt    |     rs1     | 001 |     rd      | 0010011 | SLLI      √
+    // |   0000000    |    shamt    |     rs1     | 101 |     rd      | 0010011 | SRLI      √
+    // |   0100000    |    shamt    |     rs1     | 101 |     rd      | 0010011 | SRAI      √
+    // |   0000000    |     rs2     |     rs1     | 000 |     rd      | 0110011 | ADD       √
+    // |   0100000    |     rs2     |     rs1     | 000 |     rd      | 0110011 | SUB       √
+    // |   0000000    |     rs2     |     rs1     | 001 |     rd      | 0110011 | SLL       √
+    // |   0000000    |     rs2     |     rs1     | 010 |     rd      | 0110011 | SLT       √
+    // |   0000000    |     rs2     |     rs1     | 011 |     rd      | 0110011 | SLT       √
+    // |   0000000    |     rs2     |     rs1     | 100 |     rd      | 0110011 | XOR       √
+    // |   0000000    |     rs2     |     rs1     | 101 |     rd      | 0110011 | SRL       √
+    // |   0100000    |     rs2     |     rs1     | 101 |     rd      | 0110011 | SRA       √
+    // |   0000000    |     rs2     |     rs1     | 110 |     rd      | 0110011 | OR        √
+    // |   0000000    |     rs2     |     rs1     | 111 |     rd      | 0110011 | AND       √
     // an instruction can be divided into 9 categories:
     // 1. LUI & AUIPC & JAL
     // 2. JALR
@@ -111,6 +113,7 @@ module decoder (
     always @(*) begin
         opcode  = inst[6:0];
         precise = inst[14:12];
+        moreprecise = inst[30];
         rd  = inst[11:7];
         imm = 32'b0;
         rs1_val     = 32'b0;
@@ -153,7 +156,7 @@ module decoder (
                     rs_config   = 1'b1;
                 end
                 7'b1101111: begin               // JAL
-                    imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30,21], 1'b0};
+                    imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
                     rs_config   = 1'b1;
                 end
                 7'b1100111: begin               // JALR
@@ -167,14 +170,21 @@ module decoder (
                 7'b0000011: begin               // load
                     imm = {{21{inst[31]}}, inst[30:20]};
                     lsb_config  = 1'b1;
+                    lsb_store_or_load   = 1'b0;
                 end
                 7'b0100011: begin               // store
                     imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
                     lsb_config  = 1'b1;
+                    lsb_store_or_load   = 1'b1;
                 end
-                
+                7'b0010011: begin               // op li
+                    imm = {{21{inst[31]}}, inst[30:20]};
+                    rs_config   = 1'b1;
+                end
+                7'b0110011:begin                // op
+                    rs_config   = 1'b1;
+                end
             endcase
         end
-
     end
 endmodule //decoder
