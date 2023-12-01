@@ -12,17 +12,15 @@ module decoder (
 
     // For immediate effect in the next clock, we use wire not reg
     // Query from Register File.
-    output  wire    [3:0]   rs1_index,
+    output  wire    [4:0]   rs1_index,
     input   wire            rs1_dirty,
     input   wire    [3:0]   rs1_rob_entry,
     input   wire    [31:0]  rs1_value,
-    input   wire            rs1_valid,
 
-    output  wire    [3:0]   rs2_index,
+    output  wire    [4:0]   rs2_index,
     input   wire            rs2_dirty,
     input   wire    [3:0]   rs2_rob_entry,
     input   wire    [31:0]  rs2_value,
-    input   wire            rs2_valid,
     // Query from ROB
     output  wire    [3:0]   rs1_rob_q_entry,
     input   wire    [31:0]  rs1_rob_value,
@@ -37,7 +35,7 @@ module decoder (
     output  reg     [6:0]   opcode,
     output  reg     [2:0]   precise,
     output  reg             moreprecise,
-    output  reg     [3:0]   rd,
+    output  reg     [4:0]   rd,
     output  reg     [31:0]  rs1_val,
     output  reg             rs1_need_rob,
     output  reg     [3:0]   rs1_rob_id,
@@ -166,6 +164,7 @@ module decoder (
                 7'b1100011: begin               // branch
                     imm = {{21{inst[31]}}, inst[7], inst[30:25], inst[11:8], 1'b0};
                     rs_config   = 1'b1;
+                    rd  = 5'b0;
                 end
                 7'b0000011: begin               // load
                     imm = {{21{inst[31]}}, inst[30:20]};
@@ -176,6 +175,7 @@ module decoder (
                     imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
                     lsb_config  = 1'b1;
                     lsb_store_or_load   = 1'b1;
+                    rd  = 5'b0;
                 end
                 7'b0010011: begin               // op li
                     imm = {{21{inst[31]}}, inst[30:20]};
@@ -185,6 +185,7 @@ module decoder (
                     rs_config   = 1'b1;
                 end
             endcase
+            done    = 1'b1;
         end
     end
 endmodule //decoder

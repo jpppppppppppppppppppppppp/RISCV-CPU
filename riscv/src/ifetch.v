@@ -1,6 +1,6 @@
 module ifetch (
-    input                   clk,
-    input                   rst,
+    input   wire            clk,
+    input   wire            rst,
     input   wire            rdy,
 
     output  reg     [31:0]  inst,       // 4 Bytes
