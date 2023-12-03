@@ -60,8 +60,8 @@ module decoder (
     // | imm[12|10:5] |     rs2     |     rs1     | 001 | imm[4:1|11] | 1100011 | BNE       √
     // | imm[12|10:5] |     rs2     |     rs1     | 100 | imm[4:1|11] | 1100011 | BLT       √
     // | imm[12|10:5] |     rs2     |     rs1     | 101 | imm[4:1|11] | 1100011 | BGE       √
-    // | imm[12|10:5] |     rs2     |     rs1     | 110 | imm[4:1|11] | 1100011 | BLT       √
-    // | imm[12|10:5] |     rs2     |     rs1     | 111 | imm[4:1|11] | 1100011 | BGE       √
+    // | imm[12|10:5] |     rs2     |     rs1     | 110 | imm[4:1|11] | 1100011 | BLTU      √
+    // | imm[12|10:5] |     rs2     |     rs1     | 111 | imm[4:1|11] | 1100011 | BGEU      √
     // |         imm[11:0]          |     rs1     | 000 |     rd      | 0000011 | LB        √
     // |         imm[11:0]          |     rs1     | 001 |     rd      | 0000011 | LH        √
     // |         imm[11:0]          |     rs1     | 010 |     rd      | 0000011 | LW        √
@@ -149,7 +149,11 @@ module decoder (
             end
 
             case (opcode)
-                7'b0110111, 7'b0010111: begin   // LUI && AUIPC
+                7'b0110111: begin   // LUI
+                    imm = {inst[31:12], 12'b0};
+                    rs_config   = 1'b0;
+                end
+                7'b0010111: begin   // AUIPC
                     imm = {inst[31:12], 12'b0};
                     rs_config   = 1'b1;
                 end
