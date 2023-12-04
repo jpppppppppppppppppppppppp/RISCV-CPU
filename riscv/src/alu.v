@@ -100,7 +100,38 @@ module ALU(
         end
         else begin
             if(rdy) begin
-                
+                out_config  <= 1'b0;
+                if (in_config) begin
+                    out_config  <= 1'b1;
+                    case (in_opcode)
+                    7'b0010111: begin // AUIPC
+                        out_val <= in_PC + in_imm;
+                    end
+                    7'b1101111: begin // JAL
+                        out_need_jump   <= 1'b1;
+                        out_jump_pc <= in_PC + in_imm;
+                        out_val <= in_PC + 4;
+                    end
+                    7'b1100111: begin // JALR
+                        out_need_jump   <= 1'b1;
+                        out_jump_pc <= (in_a + in_imm) & 32'b11111111111111111111111111111110;
+                        out_val <= in_PC + 4;
+                    end
+                    7'b1100011: begin // branch
+                        if (is_jump) begin
+                            out_need_jump   <= 1'b1;
+                            out_jump_pc <= in_PC + in_imm;
+                        end
+                        else begin
+                            out_need_jump   <= 1'b0;
+                            out_jump_pc <= in_PC + 4;
+                        end
+                    end
+                    7'b0010011, 7'b0110011: begin // OP
+                        out_val <= optans;
+                    end
+                endcase
+                end
             end
         end
     end
