@@ -56,6 +56,7 @@ module registerfile(
             rs2_val = reg_val[rs2_index];
         end        
     end
+    
     // hand opcode
     integer i,j;
     always @(posedge clk) begin

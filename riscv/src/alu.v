@@ -4,7 +4,7 @@ module ALU(
     input   wire            rdy,
 
     input   wire            rollback_config,
-    // from rs
+    // from RS
     input   wire            in_config,
     input   wire    [31:0]  in_a,
     input   wire    [31:0]  in_b,
