@@ -17,6 +17,7 @@ module ifetch (
     // for Reorder Buffer rollback
     input   wire    [31:0]  rollback_pc,
     input   wire            rollback_config,
+    
     // update Predictor
     input   wire    [31:0]  update_pc,
     input   wire            update_jump,
@@ -24,8 +25,7 @@ module ifetch (
 
     // for pause
     input   wire            rob_is_full,
-    input   wire            lsb_is_full,
-    input   wire            rs_is_full
+    input   wire            lsb_is_full
 );
     // i-cache
     // Address is [31:0], use [31:10] 22 bits as tag, use [9:6] 4 bits as index, use [5:0] 6 bits as offset
@@ -126,7 +126,7 @@ module ifetch (
                 PC  <= rollback_pc;
             end
             else begin
-                if (is_hit && !rob_is_full && !lsb_is_full && !rs_is_full) begin
+                if (is_hit && !rob_is_full && !lsb_is_full) begin
                     inst_rdy    <= 1'b1;
                     inst    <= inst_get;
                     out_PC  <= PC;

@@ -48,7 +48,12 @@ module decoder (
     output  reg             rs_config,
     output  reg     [3:0]   rob_need,
     output  reg     [31:0]  pc, // For JALR
-    input   wire    [3:0]   next_empty_rob_entry
+    input   wire    [3:0]   next_empty_rob_entry,
+
+    // broadcast from alu
+    input   wire            alu_rob_config,
+    input   wire    [3:0]   alu_rob_entry,
+    input   wire    [31:0]  alu_value
 );
     // 31           25 24         20 19         15 14 12 11          7 6       0
     // +--------------+-------------+-------------+-----+-------------+---------+
@@ -126,26 +131,26 @@ module decoder (
         rob_need    = next_empty_rob_entry;
         pc  = inst_PC;
         if (inst_rdy && rdy && !rst && !rollback) begin
-            if(rs1_valid) begin
-                if(!rs1_dirty) begin
-                    rs1_val = rs1_value;
-                end else if(rs1_rob_rdy) begin
-                    rs1_val = rs1_rob_value;
-                end else begin
-                    rs1_need_rob    = 1'b1;
-                    rs1_rob_id  = rs1_rob_entry;
-                end
+            if (!rs1_dirty) begin
+                rs1_val = rs1_value;
+            end else if (rs1_rob_rdy) begin
+                rs1_val = rs1_rob_value;
+            end else if (alu_rob_config && (alu_rob_entry == rs1_rob_entry)) begin
+                rs1_val = alu_value;
+            end else begin
+                rs1_need_rob    = 1'b1;
+                rs1_rob_id  = rs1_rob_entry;
             end
 
-            if(rs2_valid) begin
-                if(!rs2_dirty) begin
-                    rs2_val = rs2_value;
-                end else if(rs2_rob_rdy) begin
-                    rs2_val = rs2_rob_value;
-                end else begin
-                    rs2_need_rob    = 1'b1;
-                    rs2_rob_id  = rs2_rob_entry;
-                end
+            if (!rs2_dirty) begin
+                rs2_val = rs2_value;
+            end else if (rs2_rob_rdy) begin
+                rs2_val = rs2_rob_value;
+            end else if (alu_rob_config && (alu_rob_entry == rs2_rob_entry)) begin
+                rs2_val = alu_value;
+            end else begin
+                rs2_need_rob    = 1'b1;
+                rs2_rob_id  = rs2_rob_entry;
             end
 
             case (opcode)
