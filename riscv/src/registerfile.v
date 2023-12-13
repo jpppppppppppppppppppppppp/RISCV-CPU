@@ -30,7 +30,7 @@ module registerfile(
     reg     [31:0]  reg_val     [31:0];
     reg     [3:0]   rob_entry   [31:0];
     reg             dirty       [31:0];
-    wire            is_commit   = commit_config && (rs_to_write_id != 0);
+    wire            is_commit   = commit_config && (rs_to_write_id != 5'b0);
     wire            need_change_dirty   = is_commit && dirty[rs_to_write_id] && (rob_entry[rs_to_write_id] == commit_rob_id);
     // handle query
     always @(*) begin
