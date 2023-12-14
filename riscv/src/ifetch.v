@@ -25,7 +25,11 @@ module ifetch (
 
     // for pause
     input   wire            rob_is_full,
-    input   wire            lsb_is_full
+
+    // JALR pause
+    input   wire            JALR_need_pause,
+    input   wire            JALR_pause_rej,
+    input   wire    [31:0]  JALR_PC
 );
     // i-cache
     // Address is [31:0], use [31:10] 22 bits as tag, use [9:6] 4 bits as index, use [5:0] 6 bits as offset
@@ -126,7 +130,7 @@ module ifetch (
                 PC  <= rollback_pc;
             end
             else begin
-                if (is_hit && !rob_is_full && !lsb_is_full) begin
+                if (is_hit && (!rob_is_full)) begin
                     inst_rdy    <= 1'b1;
                     inst    <= inst_get;
                     out_PC  <= PC;
@@ -137,22 +141,27 @@ module ifetch (
                     inst_rdy    <= 1'b0;
                 end
             end
-            if  (status == 1'b0) begin
-                if (!is_hit) begin
-                    status  <= 1'b1;
-                    missing_PC  <= PC;
-                    missing_config  <= 1'b1;
+            if (!JALR_need_pause) begin
+                if  (status == 1'b0) begin
+                    if (!is_hit) begin
+                        status  <= 1'b1;
+                        missing_PC  <= PC;
+                        missing_config  <= 1'b1;
+                    end
+                end
+                else begin
+                    if (return_config) begin
+                        Valid[missed_pc_index]  <= 1'b1;
+                        Tag[missed_pc_index]    <= missed_pc_tag;
+                        Data[missed_pc_index]   <= return_row;
+                        missing_config  <= 1'b0;
+                        missing_PC  <= 32'b0;
+                        status  <= 1'b0;
+                    end
                 end
             end
-            else begin
-                if (return_config) begin
-                    Valid[missed_pc_index]  <= 1'b1;
-                    Tag[missed_pc_index]    <= missed_pc_tag;
-                    Data[missed_pc_index]   <= return_row;
-                    missing_config  <= 1'b0;
-                    missing_PC  <= 32'b0;
-                    status  <= 1'b0;
-                end
+            else if (JALR_pause_rej) begin
+                PC  <= JALR_PC;
             end
         end
     end

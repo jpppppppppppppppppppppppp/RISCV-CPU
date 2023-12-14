@@ -112,11 +112,6 @@ module ALU(
                         out_jump_pc <= in_PC + in_imm;
                         out_val <= in_PC + 4;
                     end
-                    7'b1100111: begin // JALR
-                        out_need_jump   <= 1'b1;
-                        out_jump_pc <= (in_a + in_imm) & 32'b11111111111111111111111111111110;
-                        out_val <= in_PC + 4;
-                    end
                     7'b1100011: begin // branch
                         if (is_jump) begin
                             out_need_jump   <= 1'b1;

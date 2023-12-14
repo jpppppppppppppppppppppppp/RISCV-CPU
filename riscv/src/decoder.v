@@ -21,6 +21,7 @@ module decoder (
     input   wire            rs2_dirty,
     input   wire    [3:0]   rs2_rob_entry,
     input   wire    [31:0]  rs2_value,
+
     // Query from ROB
     output  wire    [3:0]   rs1_rob_q_entry,
     input   wire    [31:0]  rs1_rob_value,
@@ -32,6 +33,7 @@ module decoder (
 
     // To Register File to update dirty bit and ROB Entry index.
     output  reg             done,
+    output  reg     [1:0]   ROB_type,
     output  reg     [6:0]   opcode,
     output  reg     [2:0]   precise,
     output  reg             moreprecise,
@@ -47,13 +49,24 @@ module decoder (
     output  reg             lsb_store_or_load,  // 1 means store
     output  reg             rs_config,
     output  reg     [3:0]   rob_need,
-    output  reg     [31:0]  pc, // For JALR
+    output  reg             is_jump,
+    input   wire            pred_jump,
     input   wire    [3:0]   next_empty_rob_entry,
+
+    // JALR pause
+    output  reg             JALR_need_pause,
+    output  reg             JALR_pause_rej,
+    output  reg     [31:0]  JALR_PC,
 
     // broadcast from alu
     input   wire            alu_rob_config,
     input   wire    [3:0]   alu_rob_entry,
-    input   wire    [31:0]  alu_value
+    input   wire    [31:0]  alu_value,
+
+    // broadcast from lsb
+    input   wire            lsb_rob_config,
+    input   wire    [3:0]   lsb_rob_entry,
+    input   wire    [31:0]  lsb_value
 );
     // 31           25 24         20 19         15 14 12 11          7 6       0
     // +--------------+-------------+-------------+-----+-------------+---------+
@@ -113,6 +126,11 @@ module decoder (
     assign  rs1_rob_q_entry = rs1_rob_entry;
     assign  rs2_rob_q_entry = rs2_rob_entry;
 
+    reg             is_wait;
+    reg     [3:0]   wait_for_rob;
+    reg     [31:0]  offset;
+
+
     always @(*) begin
         opcode  = inst[6:0];
         precise = inst[14:12];
@@ -129,72 +147,121 @@ module decoder (
         lsb_config  = 1'b0;
         rs_config   = 1'b0;
         rob_need    = next_empty_rob_entry;
-        pc  = inst_PC;
-        if (inst_rdy && rdy && !rst && !rollback) begin
-            if (!rs1_dirty) begin
-                rs1_val = rs1_value;
-            end else if (rs1_rob_rdy) begin
-                rs1_val = rs1_rob_value;
-            end else if (alu_rob_config && (alu_rob_entry == rs1_rob_entry)) begin
-                rs1_val = alu_value;
-            end else begin
-                rs1_need_rob    = 1'b1;
-                rs1_rob_id  = rs1_rob_entry;
+        JALR_need_pause = 1'b0;
+        JALR_pause_rej  = 1'b0;
+        is_jump = pred_jump;
+        if (rst || rollback) begin
+            is_wait = 1'b0;
+            JALR_need_pause = 1'b0;
+            JALR_pause_rej  = 1'b0;
+        end
+        else if (inst_rdy && rdy) begin
+            if (is_wait) begin
+                if (alu_rob_config && (alu_rob_entry == wait_for_rob)) begin
+                    is_wait = 1'b0;
+                    JALR_pause_rej  = 1'b1;
+                    JALR_need_pause = 1'b0;
+                    JALR_PC = (alu_value + offset) & 32'b11111111111111111111111111111110;
+                end
+                if (lsb_rob_config && (lsb_rob_entry == wait_for_rob)) begin
+                    is_wait = 1'b0;
+                    JALR_pause_rej  = 1'b1;
+                    JALR_need_pause = 1'b0;
+                    JALR_PC = (lsb_value + offset) & 32'b11111111111111111111111111111110;
+                end
             end
+            
+            else begin
+                if (!rs1_dirty) begin
+                    rs1_val = rs1_value;
+                end else if (rs1_rob_rdy) begin
+                    rs1_val = rs1_rob_value;
+                end else if (alu_rob_config && (alu_rob_entry == rs1_rob_entry)) begin
+                    rs1_val = alu_value;
+                end else if (lsb_rob_config && (lsb_rob_entry == rs1_rob_entry)) begin
+                    rs1_val = lsb_value;
+                end else begin
+                    rs1_need_rob    = 1'b1;
+                    rs1_rob_id  = rs1_rob_entry;
+                end
 
-            if (!rs2_dirty) begin
-                rs2_val = rs2_value;
-            end else if (rs2_rob_rdy) begin
-                rs2_val = rs2_rob_value;
-            end else if (alu_rob_config && (alu_rob_entry == rs2_rob_entry)) begin
-                rs2_val = alu_value;
-            end else begin
-                rs2_need_rob    = 1'b1;
-                rs2_rob_id  = rs2_rob_entry;
+                if (!rs2_dirty) begin
+                    rs2_val = rs2_value;
+                end else if (rs2_rob_rdy) begin
+                    rs2_val = rs2_rob_value;
+                end else if (alu_rob_config && (alu_rob_entry == rs2_rob_entry)) begin
+                    rs2_val = alu_value;
+                end else if (lsb_rob_config && (lsb_rob_entry == rs2_rob_entry)) begin
+                    rs2_val = lsb_value;
+                end else begin
+                    rs2_need_rob    = 1'b1;
+                    rs2_rob_id  = rs2_rob_entry;
+                end
+
+                case (opcode)
+                    7'b0110111: begin   // LUI
+                        imm = {inst[31:12], 12'b0};
+                        rs_config   = 1'b0;
+                        ROB_type    = 2'b00;
+                    end
+                    7'b0010111: begin   // AUIPC
+                        imm = {inst[31:12], 12'b0};
+                        rs_config   = 1'b1;
+                        ROB_type    = 2'b00;
+                    end
+                    7'b1101111: begin               // JAL
+                        imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
+                        rs_config   = 1'b1;
+                        ROB_type    = 2'b00;   
+                    end
+                    7'b1100111: begin               // JALR
+                        imm = inst_PC + 4;
+                        ROB_type    = 2'b00;
+                        if (rs1_need_rob) begin
+                            JALR_need_pause = 1'b1;
+                            JALR_pause_rej  = 1'b0;
+                            is_wait = 1'b1;
+                            wait_for_rob    = rs1_rob_entry;
+                            offset  = {{21{inst[31]}}, inst[30:20]};
+                        end
+                        else begin
+                            JALR_need_pause = 1'b0;
+                            JALR_pause_rej  = 1'b1;
+                            is_wait = 1'b0;
+                            JALR_PC = (rs1_val + {{21{inst[31]}}, inst[30:20]}) & 32'b11111111111111111111111111111110;
+                        end
+                    end
+                    7'b1100011: begin               // branch
+                        imm = {{21{inst[31]}}, inst[7], inst[30:25], inst[11:8], 1'b0};
+                        rs_config   = 1'b1;
+                        rd  = 5'b0;
+                        ROB_type    = 2'b10;
+                    end
+                    7'b0000011: begin               // load
+                        imm = {{21{inst[31]}}, inst[30:20]};
+                        lsb_config  = 1'b1;
+                        lsb_store_or_load   = 1'b0;
+                        ROB_type    = 2'b00;
+                    end
+                    7'b0100011: begin               // store
+                        imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
+                        lsb_config  = 1'b1;
+                        lsb_store_or_load   = 1'b1;
+                        rd  = 5'b0;
+                        ROB_type    = 2'b01;
+                    end
+                    7'b0010011: begin               // op li
+                        imm = {{21{inst[31]}}, inst[30:20]};
+                        rs_config   = 1'b1;
+                        ROB_type    = 2'b00;
+                    end
+                    7'b0110011:begin                // op
+                        rs_config   = 1'b1;
+                        ROB_type    = 2'b00;
+                    end
+                endcase
+                done    = 1'b1;
             end
-
-            case (opcode)
-                7'b0110111: begin   // LUI
-                    imm = {inst[31:12], 12'b0};
-                    rs_config   = 1'b0;
-                end
-                7'b0010111: begin   // AUIPC
-                    imm = {inst[31:12], 12'b0};
-                    rs_config   = 1'b1;
-                end
-                7'b1101111: begin               // JAL
-                    imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
-                    rs_config   = 1'b1;
-                end
-                7'b1100111: begin               // JALR
-                    imm = {{21{inst[31]}}, inst[30:20]}; 
-                    rs_config   = 1'b1;
-                end
-                7'b1100011: begin               // branch
-                    imm = {{21{inst[31]}}, inst[7], inst[30:25], inst[11:8], 1'b0};
-                    rs_config   = 1'b1;
-                    rd  = 5'b0;
-                end
-                7'b0000011: begin               // load
-                    imm = {{21{inst[31]}}, inst[30:20]};
-                    lsb_config  = 1'b1;
-                    lsb_store_or_load   = 1'b0;
-                end
-                7'b0100011: begin               // store
-                    imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
-                    lsb_config  = 1'b1;
-                    lsb_store_or_load   = 1'b1;
-                    rd  = 5'b0;
-                end
-                7'b0010011: begin               // op li
-                    imm = {{21{inst[31]}}, inst[30:20]};
-                    rs_config   = 1'b1;
-                end
-                7'b0110011:begin                // op
-                    rs_config   = 1'b1;
-                end
-            endcase
-            done    = 1'b1;
         end
     end
 endmodule //decoder
