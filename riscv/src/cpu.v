@@ -40,7 +40,6 @@ always @(posedge clk_in)
       end
     else
       begin
-      
       end
   end
 
