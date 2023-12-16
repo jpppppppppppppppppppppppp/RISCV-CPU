@@ -35,6 +35,10 @@ module reservestation(
     input   wire                alu_config,
     input   wire    [31:0]      alu_val,
     input   wire    [3:0]       alu_rob_entry
+
+    input   wire                lsb_config,
+    input   wire    [31:0]      lsb_val,
+    input   wire    [3:0]       lsb_rob_entry
 );
 
     reg     [15:0]  ready;
@@ -105,6 +109,10 @@ module reservestation(
                             Q1_need[empty_entry]    <= 1'b0;
                             value1[empty_entry] <= alu_val;
                         end
+                        else if (lsb_config && (in_Q1 == lsb_rob_entry)) begin
+                            Q1_need[empty_entry]    <= 1'b0;
+                            value1[empty_entry] <= lsb_val;
+                        end
                     end
                     else Q1_need[empty_entry]   <= 1'b0;
                     value2[empty_entry] <=  in_value_2;
@@ -114,6 +122,10 @@ module reservestation(
                         if (alu_config && (in_Q2 == alu_rob_entry)) begin
                             Q2_need[empty_entry]    <= 1'b0;
                             value2[empty_entry] <= alu_val;
+                        end
+                        else if (lsb_config && (in_Q2 == lsb_rob_entry)) begin
+                            Q2_need[empty_entry]    <= 1'b0;
+                            value2[empty_entry] <= lsb_val;
                         end
                     end
                     else Q2_need[empty_entry]   <= 1'b0;
@@ -136,8 +148,19 @@ module reservestation(
                         end
                     end
                 end
+                if (lsb_config) begin
+                    for (k = 0; k < 16; k = k + 1) begin
+                        if (Q1_need[k] && (Q1[k] == lsb_rob_entry)) begin
+                            value1[k]   <= lsb_val;
+                            Q1_need[k]  <= 1'b0;
+                        end
+                        if (Q2_need[k] && (Q2[k] == lsb_rob_entry)) begin
+                            value2[k]   <= lsb_val;
+                            Q2_need[k]  <= 1'b0;
+                        end
+                    end
+                end
             end
         end
     end
-
 endmodule // reservestation

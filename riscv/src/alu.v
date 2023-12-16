@@ -21,7 +21,6 @@ module ALU(
     output  reg     [31:0]  out_jump_pc,
     output  reg     [3:0]   out_rob_entry,
     output  reg             out_config
-
 );
     // handle add(i) sub sll(i) slt(i) slt(i)u xor(i) srl(i) sra(i) or(i) and(i)
     wire    [31:0]  opt1      = in_a;
