@@ -1,3 +1,5 @@
+`ifndef RS
+`define RS
 module reservestation(
     input   wire                clk,
     input   wire                rst,
@@ -34,27 +36,27 @@ module reservestation(
     // broadcast from alu
     input   wire                alu_config,
     input   wire    [31:0]      alu_val,
-    input   wire    [3:0]       alu_rob_entry
+    input   wire    [3:0]       alu_rob_entry,
 
     input   wire                lsb_config,
     input   wire    [31:0]      lsb_val,
     input   wire    [3:0]       lsb_rob_entry
 );
 
-    reg     [15:0]  ready;
-    reg     [15:0]  used;
-    reg     [15:0]  value1      [31:0];
-    reg     [15:0]  value2      [31:0];
-    reg     [15:0]  Q1          [3:0];
-    reg     [15:0]  Q1_need;
-    reg     [15:0]  Q2          [3:0];
-    reg     [15:0]  Q2_need;
-    reg     [15:0]  ROB_entry   [3:0];
-    reg     [15:0]  PC          [31:0];
-    reg     [15:0]  imm         [31:0];
-    reg     [15:0]  opcode      [6:0];
-    reg     [15:0]  precise     [2:0];
-    reg     [15:0]  more_precise;
+    reg             ready           [15:0];
+    reg             used            [15:0];
+    reg     [31:0]  value1          [15:0];
+    reg     [31:0]  value2          [15:0];
+    reg     [3:0]   Q1              [15:0];
+    reg             Q1_need         [15:0];
+    reg     [3:0]   Q2              [15:0];
+    reg             Q2_need         [15:0];
+    reg     [3:0]   ROB_entry       [15:0];
+    reg     [31:0]  PC              [15:0];
+    reg     [31:0]  imm             [15:0];
+    reg     [6:0]   opcode          [15:0];
+    reg     [2:0]   precise         [15:0];
+    reg             more_precise    [15:0];
 
     // find next ready entry and empty entry;
     reg     [4:0]   ready_entry;
@@ -69,7 +71,7 @@ module reservestation(
                 empty_entry = i;
             end
             else begin
-                if ((!Q1_need[i]) && (!Q2_need)) begin
+                if ((!Q1_need[i]) && (!Q2_need[i])) begin
                     ready[i]    = 1'b1;
                     ready_entry = i;
                 end
@@ -164,3 +166,4 @@ module reservestation(
         end
     end
 endmodule // reservestation
+`endif

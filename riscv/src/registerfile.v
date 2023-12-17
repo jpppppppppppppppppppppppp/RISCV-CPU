@@ -1,3 +1,5 @@
+`ifndef RF
+`define RF
 module registerfile(
     input   wire            clk,
     input   wire            rst,
@@ -90,3 +92,4 @@ module registerfile(
         end
     end
 endmodule //registerfile
+`endif

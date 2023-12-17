@@ -1,3 +1,5 @@
+`ifndef DEC
+`define DEC
 module decoder (
     input   wire            clk,
     input   wire            rst,
@@ -8,7 +10,7 @@ module decoder (
     input   wire            inst_rdy,
     input   wire    [31:0]  inst,
     input   wire    [31:0]  inst_PC,
-    input   wire            inst_is_Jump,
+    input   wire            pred_jump,
 
     // For immediate effect in the next clock, we use wire not reg
     // Query from Register File.
@@ -50,7 +52,8 @@ module decoder (
     output  reg             rs_config,
     output  reg     [3:0]   rob_need,
     output  reg             is_jump,
-    input   wire            pred_jump,
+    output  reg     [31:0]  out_pc,
+    output  reg             rob_ready,
     input   wire    [3:0]   next_empty_rob_entry,
 
     // JALR pause
@@ -68,6 +71,12 @@ module decoder (
     input   wire    [3:0]   lsb_rob_entry,
     input   wire    [31:0]  lsb_value
 );
+`ifdef JY
+integer logfile;
+initial begin
+    logfile = $fopen("decoder.log", "w");
+end
+`endif
     // 31           25 24         20 19         15 14 12 11          7 6       0
     // +--------------+-------------+-------------+-----+-------------+---------+
     // |                   imm[31:12]                   |     rd      | 0110111 | LUI       √
@@ -150,6 +159,7 @@ module decoder (
         JALR_need_pause = 1'b0;
         JALR_pause_rej  = 1'b0;
         is_jump = pred_jump;
+        out_pc  = inst_PC;
         if (rst || rollback) begin
             is_wait = 1'b0;
             JALR_need_pause = 1'b0;
@@ -197,26 +207,37 @@ module decoder (
                     rs2_need_rob    = 1'b1;
                     rs2_rob_id  = rs2_rob_entry;
                 end
-
+                `ifdef JY
+                    $fdisplay(logfile, "PC: %D %8H", inst_PC, inst_PC);
+                    $fdisplay(logfile, "inst: %8H", inst);
+                    $fdisplay(logfile, "opcode: %7B", opcode);
+                    $fdisplay(logfile, "Q1: %D %1B %7B", rs1_index, rs1_need_rob, rs1_rob_id);
+                    $fdisplay(logfile, "Q2: %D %1B %7B", rs2_index, rs2_need_rob, rs2_rob_id);
+                    $fdisplay(logfile, "rd: %D %7B", rd, rob_need);
+                `endif
                 case (opcode)
                     7'b0110111: begin   // LUI
                         imm = {inst[31:12], 12'b0};
                         rs_config   = 1'b0;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b1;
                     end
                     7'b0010111: begin   // AUIPC
                         imm = {inst[31:12], 12'b0};
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b1;
                     end
                     7'b1101111: begin               // JAL
                         imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
                         rs_config   = 1'b1;
-                        ROB_type    = 2'b00;   
+                        ROB_type    = 2'b00;
+                        rob_ready   = 1'b1; 
                     end
                     7'b1100111: begin               // JALR
                         imm = inst_PC + 4;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b1;
                         if (rs1_need_rob) begin
                             JALR_need_pause = 1'b1;
                             JALR_pause_rej  = 1'b0;
@@ -236,12 +257,14 @@ module decoder (
                         rs_config   = 1'b1;
                         rd  = 5'b0;
                         ROB_type    = 2'b10;
+                        rob_ready   = 1'b0;
                     end
                     7'b0000011: begin               // load
                         imm = {{21{inst[31]}}, inst[30:20]};
                         lsb_config  = 1'b1;
                         lsb_store_or_load   = 1'b0;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b0;
                     end
                     7'b0100011: begin               // store
                         imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
@@ -249,15 +272,18 @@ module decoder (
                         lsb_store_or_load   = 1'b1;
                         rd  = 5'b0;
                         ROB_type    = 2'b01;
+                        rob_ready   = 1'b1;
                     end
                     7'b0010011: begin               // op li
                         imm = {{21{inst[31]}}, inst[30:20]};
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b0;
                     end
                     7'b0110011:begin                // op
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
+                        rob_ready   = 1'b0;
                     end
                 endcase
                 done    = 1'b1;
@@ -265,3 +291,4 @@ module decoder (
         end
     end
 endmodule //decoder
+`endif

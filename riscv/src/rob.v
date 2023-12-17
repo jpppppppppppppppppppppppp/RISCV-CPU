@@ -1,3 +1,5 @@
+`ifndef ROB
+`define ROB
 module ROB(
     input   wire            clk,
     input   wire            rst,
@@ -14,6 +16,7 @@ module ROB(
     input   wire    [4:0]   inst_rd,
     input   wire    [31:0]  inst_PC, // for update
     input   wire            inst_predict_jump,
+    input   wire            inst_ready,
 
     // handle query from decoder
     input   wire    [3:0]   rs1_rob_q_entry,
@@ -51,13 +54,19 @@ module ROB(
     input   wire    [3:0]   lsb_rob_entry,
     input   wire    [31:0]  lsb_value
 );
-    reg     [15:0]  type    [1:0]; // 00 for RegisterWrite, 01 for MemoryWrite, 10 for Branch
-    reg     [15:0]  ready;
-    reg     [15:0]  predict;
-    reg     [15:0]  jump;
-    reg     [15:0]  PC      [31:0];
-    reg     [15:0]  rd      [4:0];
-    reg     [15:0]  value   [31:0];
+`ifdef JY
+integer logfile;
+initial begin
+    logfile = $fopen("rob.log", "w");
+end
+`endif
+    reg     [1:0]   type    [15:0]; // 00 for RegisterWrite, 01 for MemoryWrite, 10 for Branch
+    reg             ready   [15:0];
+    reg             predict [15:0];
+    reg             jump    [15:0];
+    reg     [31:0]  PC      [15:0];
+    reg     [4:0]   rd      [15:0];
+    reg     [31:0]  value   [15:0];
 
     reg     [3:0]   head;
     reg     [3:0]   tail;
@@ -118,16 +127,28 @@ module ROB(
                     commit_reg_id   <= rd[tail];
                     commit_reg_value    <= value[tail];
                     commit_reg_rob  <= tail;
+                    `ifdef JY
+                        $fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(logfile, "commit reg write PC:%8H", PC[tail]);
+                    `endif
                 end
                 else if (type[tail] == 2'b01) begin
                     commit_lsb_config   <= 1'b1;
                     commit_lsb_rob  <= tail;
+                    `ifdef JY
+                        $fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(logfile, "commit mem write PC:%8H", PC[tail]);
+                    `endif
                 end
                 else if (type[tail] == 2'b10) begin
+                    `ifdef JY
+                        $fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(logfile, "commit branch PC:%8H", PC[tail]);
+                    `endif
                     commit_update_config    <= 1'b1;
                     commit_update_pc    <= PC[tail];
                     commit_update_jump  <= jump[tail];
-                    if (predict != jump) begin
+                    if (predict[tail] != jump[tail]) begin
                         rollback_config <= 1'b1;
                         rollback_pc <= value[tail];
                     end
@@ -142,12 +163,7 @@ module ROB(
                 PC[head]    <= inst_PC;
                 rd[head]    <= inst_rd;
                 predict[head]   <= inst_predict_jump;
-                if (ROB_type == 2'b01) begin
-                    ready[head] <= 1'b1;
-                end
-                else begin
-                    ready[head] <= 1'b0;
-                end
+                ready[head] <= inst_ready;
             end
             if (alu_config) begin
                 if (type[alu_rob_entry] == 2'b00) begin
@@ -167,3 +183,4 @@ module ROB(
         end
     end
 endmodule //ROB
+`endif

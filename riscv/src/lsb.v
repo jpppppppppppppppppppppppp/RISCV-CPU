@@ -1,4 +1,6 @@
-module lsb(
+`ifndef LSB
+`define LSB
+module LSB(
     input   wire            clk,
     input   wire            rst,
     input   wire            rdy,
@@ -40,21 +42,21 @@ module lsb(
     input   wire    [3:0]   inst_rs2_ROB_id,
     input   wire    [31:0]  inst_imm
 );
-    reg     [15:0]  ls; // 1 for load, 0 for store
-    reg     [15:0]  precise [2:0];
-    reg     [15:0]  destination_need;
-    reg     [15:0]  destination_ROB [3:0];
-    reg     [15:0]  destination_add [31:0];
-    reg     [15:0]  value_need;
-    reg     [15:0]  value_ROB   [3:0];
-    reg     [15:0]  value   [31:0];
-    reg     [15:0]  offset  [31:0];
-    reg     [15:0]  ready;
-    reg     [15:0]  ROB_entry;
+    reg             ls                  [15:0]; // 1 for load, 0 for store
+    reg     [2:0]   precise             [15:0];
+    reg             destination_need    [15:0];
+    reg     [3:0]   destination_ROB     [15:0];
+    reg     [31:0]  destination_add     [15:0];
+    reg             value_need          [15:0];
+    reg     [3:0]   value_ROB           [15:0];
+    reg     [31:0]  value               [15:0];
+    reg     [31:0]  offset              [15:0];
+    reg             ready               [15:0];
+    reg             ROB_entry           [15:0];
 
     reg     [3:0]   head;
     reg     [3:0]   tail;
-    reg     is_wait;
+    reg             is_wait;
     reg     [4:0]   last_commit;
 
     integer i,j,k,l;
@@ -114,7 +116,7 @@ module lsb(
                         mem_ctrl_out_precise    <= precise[head];
                     end
                     else begin
-                        mem_ctrl_out_ls <= 1'b1;
+                        mem_ctrl_out_ls <= 1'b0;
                         mem_ctrl_out_addr   <= destination_add[head] + offset[head];
                         mem_ctrl_out_precise    <= precise[head];
                         mem_ctrl_out_data   <= value[head];
@@ -125,6 +127,7 @@ module lsb(
                     for (i = tail; i != head; i = i + 1) begin
                         if ((!ls[i]) && (ROB_entry[i] == commit_ROB)) begin
                             ready[i]    <= 1'b1;
+                            last_commit <= i;
                         end
                     end
                 end
@@ -182,4 +185,5 @@ module lsb(
             end
         end
     end
-endmodule //lsb
+endmodule //LSB
+`endif

@@ -1,3 +1,5 @@
+`ifndef ALU
+`define ALU
 module ALU(
     input   wire            clk,
     input   wire            rst,
@@ -100,6 +102,7 @@ module ALU(
         else begin
             if(rdy) begin
                 out_config  <= 1'b0;
+                out_rob_entry   <= in_rob_entry;
                 if (in_config) begin
                     out_config  <= 1'b1;
                     case (in_opcode)
@@ -130,3 +133,4 @@ module ALU(
         end
     end
 endmodule //ALU
+`endif

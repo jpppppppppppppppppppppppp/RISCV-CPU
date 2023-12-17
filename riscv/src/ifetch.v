@@ -1,3 +1,5 @@
+`ifndef IF
+`define IF
 module ifetch (
     input   wire            clk,
     input   wire            rst,
@@ -38,6 +40,12 @@ module ifetch (
     // Each Block Width = Each Block Size = 512 bits
     // Total Size = Block Num * Each Block Size = 1024 Bytes
     // We need [Block Num] Valid, [tag_width * Block Num] Tag, [Each Block Width * Block Num] Data
+`ifdef JY
+integer logfile;
+initial begin
+    logfile = $fopen("IF.log", "w");
+end
+`endif
     reg             Valid   [15:0];
     reg     [21:0]  Tag     [15:0];
     reg     [511:0] Data    [15:0];
@@ -136,6 +144,12 @@ module ifetch (
                     out_PC  <= PC;
                     PC  <= Pred_PC;
                     is_Jump <= Pred_Jump;
+                    `ifdef JY
+                        $fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(logfile, "PC:%D(%8H) -> %D(%8H)", PC, PC, Pred_PC, Pred_PC);
+                        $fdisplay(logfile, "inst:%32B", inst_get);
+                        $fdisplay(logfile, "index:%B offset:%B tag:%B", index, offset, tag);
+                    `endif
                 end
                 else begin
                     inst_rdy    <= 1'b0;
@@ -147,6 +161,10 @@ module ifetch (
                         status  <= 1'b1;
                         missing_PC  <= PC;
                         missing_config  <= 1'b1;
+                        `ifdef JY
+                            $fdisplay(logfile, "!%t", $realtime);
+                            $fdisplay(logfile, "miss PC:%D", PC);
+                        `endif
                     end
                 end
                 else begin
@@ -157,6 +175,12 @@ module ifetch (
                         missing_config  <= 1'b0;
                         missing_PC  <= 32'b0;
                         status  <= 1'b0;
+                        `ifdef JY
+                            $fdisplay(logfile, "@%t", $realtime);
+                            $fdisplay(logfile, "PC:%D", PC);
+                            $fdisplay(logfile, "GET%512B", return_row);
+                            $fdisplay(logfile, "valid%B %D", missed_pc_index, missing_PC);
+                        `endif
                     end
                 end
             end
@@ -166,3 +190,4 @@ module ifetch (
         end
     end
 endmodule //ifetch
+`endif
