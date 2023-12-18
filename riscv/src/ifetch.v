@@ -166,6 +166,12 @@ end
                             $fdisplay(logfile, "miss PC:%D", PC);
                         `endif
                     end
+                    else begin
+                        `ifdef JY
+                            $fdisplay(logfile, "!%t", $realtime);
+                            $fdisplay(logfile, "hit PC:%D", PC);
+                        `endif
+                    end
                 end
                 else begin
                     if (return_config) begin

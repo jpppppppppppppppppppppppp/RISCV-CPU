@@ -26,9 +26,9 @@ module mem_ctrl (
     output  reg     [31:0]  lsb_out_data
 );
 `ifdef JY
-integer logfile;
+integer log;
 initial begin
-    logfile = $fopen("memctrl.log", "w");
+    log = $fopen("memctrl.log", "w");
 end
 `endif
     reg     [7:0]   buffer  [63:0];
@@ -60,8 +60,8 @@ end
         end
         else if (rdy) begin
             `ifdef JY
-    $fdisplay(logfile, "statu:%B", statu);
-`endif
+                $fdisplay(logfile, "%t statu: %B", $realtime, statu);
+            `endif
             ram_read_or_write   <= 1'b0;
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
@@ -106,9 +106,6 @@ end
                         statu   <= 2'b00;
                         inst_out_config <= 1'b1;
                         ram_read_or_write   <= 1'b0;
-                        `ifdef JY
-                            $fdisplay(logfile, "%B nmsl:%D", statu, buffer_addr);
-                        `endif
                     end
                     else begin
                         ram_read_or_write   <= 1'b0;
@@ -126,7 +123,7 @@ end
             else if (statu == 2'b10) begin
                 if ((buffer_addr[17:16] != 2'b11) || (!io_buffer_full)) begin
                     `ifdef JY
-                        $fdisplay(logfile, "%B %B", stage, len);
+                        $fdisplay(logfile, "%B %B %B", statu, stage, len);
                     `endif
                     if (stage == len) begin
                         statu   <= 2'b00;
@@ -150,6 +147,9 @@ end
                     statu   <= 2'b00;
                 end
                 else begin
+                    `ifdef JY
+                        $fdisplay(logfile, "%B %B %B", statu, stage, len);
+                    `endif
                     ram_read_or_write   <= 1'b1;
                     case (stage)
                         3'b001: lsb_out_data[7:0]   <= data_read_in;

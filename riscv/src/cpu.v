@@ -57,7 +57,7 @@ module cpu(
   wire  [4:0]   query_rs2;
   wire  [3:0]   query_rob1;
   wire  [3:0]   query_rob2;
-  wire          docoder_done;
+  wire          decoder_done;
   wire  [1:0]   decoder_rob_type;
   wire  [6:0]   decoder_opcode;
   wire  [2:0]   decoder_precise;
@@ -73,9 +73,11 @@ module cpu(
   wire          decoder_lsb_config;
   wire          decoder_lsb_sl;
   wire          decoder_rs_config;
+  wire          decoder_rf_config;
   wire  [3:0]   decoder_rob_entry;
   wire          decoder_pred_jump;
   wire  [31:0]  decoder_pc;
+  wire  [31:0]  decoder_ans;
   wire          decoder_rob_ready;
   wire          decoder_JALR_need_pause;
   wire          decoder_JALR_pause_rej;
@@ -135,7 +137,7 @@ module cpu(
     .in_PC                        (rs_alu_pc),
     .in_opcode                    (rs_alu_opcode),
     .in_precise                   (rs_alu_precise),
-    .in_more_precose              (rs_alu_more_precise),
+    .in_more_precise              (rs_alu_more_precise),
     .in_imm                       (rs_alu_imm),
     .in_rob_entry                 (rs_alu_rob),
     .out_val                      (ALU_out_val),
@@ -227,7 +229,7 @@ module cpu(
     .rs2_rob_q_entry              (query_rob2),
     .rs2_rob_value                (rob_rs2_rob_value),
     .rs2_rob_rdy                  (rob_rs2_rob_rdy),
-    .done                         (docoder_done),
+    .done                         (decoder_done),
     .ROB_type                     (decoder_rob_type),
     .opcode                       (decoder_opcode),
     .precise                      (decoder_precise),
@@ -243,10 +245,12 @@ module cpu(
     .lsb_config                   (decoder_lsb_config),
     .lsb_store_or_load            (decoder_lsb_sl),
     .rs_config                    (decoder_rs_config),
+    .rf_config                    (decoder_rf_config),
     .rob_need                     (decoder_rob_entry),
     .is_jump                      (decoder_pred_jump),
     .out_pc                       (decoder_pc),
     .rob_ready                    (decoder_rob_ready),
+    .rob_ans                      (decoder_ans),
     .next_empty_rob_entry         (rob_nxt_empty_ROB_id),
     .JALR_need_pause              (decoder_JALR_need_pause),
     .JALR_pause_rej               (decoder_JALR_pause_rej),
@@ -334,7 +338,7 @@ module cpu(
     .rs_to_write_id               (rob_commit_reg_id),
     .rs_to_write_val              (rob_commit_reg_value),
     .commit_rob_id                (rob_commit_reg_rob),
-    .decoder_done                 (docoder_done),
+    .decoder_done                 (decoder_rf_config),
     .rd                           (decoder_rd),
     .rob_need                     (decoder_rob_entry)
   );
@@ -347,12 +351,13 @@ module cpu(
     .rollback_config              (rollback),
     .rollback_pc                  (rollback_PC),
     .nxt_empty_ROB_id             (rob_nxt_empty_ROB_id),
-    .decoder_done                 (docoder_done),
+    .decoder_done                 (decoder_done),
     .ROB_type                     (decoder_rob_type),
     .inst_rd                      (decoder_rd),
     .inst_PC                      (decoder_pc),
     .inst_predict_jump            (decoder_pred_jump),
     .inst_ready                   (decoder_rob_ready),
+    .inst_ans                     (decoder_ans),
     .rs1_rob_q_entry              (query_rob1),
     .rs1_rob_value                (rob_rs1_rob_value),
     .rs1_rob_rdy                  (rob_rs1_rob_rdy),

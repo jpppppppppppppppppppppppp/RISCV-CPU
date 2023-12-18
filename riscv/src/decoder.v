@@ -50,10 +50,12 @@ module decoder (
     output  reg             lsb_config,
     output  reg             lsb_store_or_load,  // 1 means store
     output  reg             rs_config,
+    output  reg             rf_config,
     output  reg     [3:0]   rob_need,
     output  reg             is_jump,
     output  reg     [31:0]  out_pc,
     output  reg             rob_ready,
+    output  reg     [31:0]  rob_ans,
     input   wire    [3:0]   next_empty_rob_entry,
 
     // JALR pause
@@ -155,6 +157,7 @@ end
         done    = 1'b0;
         lsb_config  = 1'b0;
         rs_config   = 1'b0;
+        rf_config   = 1'b0;
         rob_need    = next_empty_rob_entry;
         JALR_need_pause = 1'b0;
         JALR_pause_rej  = 1'b0;
@@ -218,26 +221,38 @@ end
                 case (opcode)
                     7'b0110111: begin   // LUI
                         imm = {inst[31:12], 12'b0};
+                        rob_ans = {inst[31:12], 12'b0};
                         rs_config   = 1'b0;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b1;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                     end
                     7'b0010111: begin   // AUIPC
                         imm = {inst[31:12], 12'b0};
+                        rob_ans = 32'b0;
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
-                        rob_ready   = 1'b1;
+                        rob_ready   = 1'b0;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                     end
                     7'b1101111: begin               // JAL
                         imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
+                        rob_ans = 32'b0;
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
-                        rob_ready   = 1'b1; 
+                        rob_ready   = 1'b0;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                     end
                     7'b1100111: begin               // JALR
                         imm = inst_PC + 4;
+                        rob_ans = inst_PC + 4;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b1;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                         if (rs1_need_rob) begin
                             JALR_need_pause = 1'b1;
                             JALR_pause_rej  = 1'b0;
@@ -258,6 +273,8 @@ end
                         rd  = 5'b0;
                         ROB_type    = 2'b10;
                         rob_ready   = 1'b0;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b0;
                     end
                     7'b0000011: begin               // load
                         imm = {{21{inst[31]}}, inst[30:20]};
@@ -265,6 +282,7 @@ end
                         lsb_store_or_load   = 1'b0;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b0;
+                        rf_config   = 1'b1;
                     end
                     7'b0100011: begin               // store
                         imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
@@ -273,17 +291,22 @@ end
                         rd  = 5'b0;
                         ROB_type    = 2'b01;
                         rob_ready   = 1'b1;
+                        rf_config   = 1'b0;
                     end
                     7'b0010011: begin               // op li
                         imm = {{21{inst[31]}}, inst[30:20]};
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b0;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                     end
                     7'b0110011:begin                // op
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b0;
+                        lsb_config  = 1'b0;
+                        rf_config   = 1'b1;
                     end
                 endcase
                 done    = 1'b1;
