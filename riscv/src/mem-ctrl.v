@@ -48,30 +48,42 @@ end
 
     always @(posedge clk) begin
         if (rst) begin
+            `ifdef JY
+                $fdisplay(log, "%t reset: rst: %B;", $realtime, rst);
+            `endif
             statu   <= 2'b00;
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
             last_pc <= 33'b100000000000000000000000000000000;
         end
         else if (!rdy) begin
+            `ifdef JY
+                $fdisplay(log, "%t not ready pause: rdy: %B;", $realtime, rdy);
+            `endif
             ram_read_or_write   <= 1'b0;
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
         end
         else if (rdy) begin
             `ifdef JY
-                $fdisplay(logfile, "%t statu: %B", $realtime, statu);
+                $fdisplay(log, "%t statu: %B", $realtime, statu);
             `endif
             ram_read_or_write   <= 1'b0;
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
             if ((statu == 2'b00) && (!rollback)) begin
                 if (inst_config && !(last_pc[32] != 1 && last_pc[31:0] == inst_PC)) begin
+                    `ifdef JY
+                        $fdisplay(log, "%t push inst get: pc: %8H;", $realtime, inst_PC);
+                    `endif
                     buffer_addr <= {inst_PC[31:6], 6'b000000};
                     last_pc <= {1'b0, inst_PC};
                     statu   <= 2'b01;
                 end
                 else if (lsb_config) begin
+                    `ifdef JY
+                        $fdisplay(log, "%t push lsb: addr: %8H; ls: %B; precise: %B", $realtime, lsb_addr, lsb_ls, lsb_precise);
+                    `endif
                     buffer_addr <= lsb_addr;
                     statu   <= {1'b1, lsb_ls};
                     precise <= lsb_precise;
@@ -91,18 +103,20 @@ end
             end
             else if (statu == 2'b01) begin
                 if (rollback) begin
+                    `ifdef JY
+                        $fdisplay(log, "%t inst_fetch stopped by rollback %B", $realtime, rollback);
+                    `endif
                     statu   <= 2'b00;
                 end
                 else begin
                     buffer[pos]    <= data_read_in;
                     `ifdef JY
-                        $fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(logfile, "PC:%D", buffer_addr);
-                        $fdisplay(logfile, "DATA:%512B", inst_row);
-                        $fdisplay(logfile, "DATA:%8B", data_read_in);
-                        $fdisplay(logfile, "ID:%6B", pos);
+                        $fdisplay(log, "%t fetch inst get: value: %D", $realtime, data_read_in);
                     `endif
                     if ((buffer_addr[5:0] == 6'b000001) && (buffer_addr[31:6] != inst_PC[31:6])) begin
+                        `ifdef JY
+                            $fdisplay(log, "%t fetch inst end; change status;", $realtime);
+                        `endif
                         statu   <= 2'b00;
                         inst_out_config <= 1'b1;
                         ram_read_or_write   <= 1'b0;
@@ -113,8 +127,14 @@ end
                         buffer_addr <= buffer_addr + 1;
                         if (buffer_addr[5:0] == 6'b000001) begin
                             pos <= 6'b0;
+                            `ifdef JY
+                                $fdisplay(log, "%t fetch inst: PC: %8H; ID: %D", $realtime, buffer_addr, 6'b0);
+                            `endif
                         end
                         else begin
+                            `ifdef JY
+                                $fdisplay(log, "%t fetch inst: PC: %8H; ID: %D", $realtime, buffer_addr, pos);
+                            `endif
                             pos <= pos + 1;
                         end
                     end
@@ -122,15 +142,20 @@ end
             end
             else if (statu == 2'b10) begin
                 if ((buffer_addr[17:16] != 2'b11) || (!io_buffer_full)) begin
-                    `ifdef JY
-                        $fdisplay(logfile, "%B %B %B", statu, stage, len);
-                    `endif
                     if (stage == len) begin
+                        ram_read_or_write   <= 1'b0;
+                        `ifdef JY
+                            $fdisplay(log, "%t store data end; change status;", $realtime);
+                        `endif
                         statu   <= 2'b00;
                         lsb_out_config  <= 1'b1;
+                        stage   <= 3'b0;
                     end
                     else begin
-                        ram_read_or_write   <= 1'b0;
+                        ram_read_or_write   <= 1'b1;
+                        `ifdef JY
+                            $fdisplay(log, "%t store data: stage: %D; len: %D; addr: %8H", $realtime, stage, len, buffer_addr + stage);
+                        `endif
                         case (stage)
                             3'b000: data_write_out  <=  lsb_data[7:0];
                             3'b001: data_write_out  <=  lsb_data[15:8];
@@ -144,13 +169,16 @@ end
             end
             else if (statu == 2'b11) begin
                 if (rollback) begin
+                    `ifdef JY
+                        $fdisplay(log, "%t load data stopped by rollback; %B", $realtime, rollback);
+                    `endif
                     statu   <= 2'b00;
                 end
                 else begin
+                    ram_read_or_write   <= 1'b0;
                     `ifdef JY
-                        $fdisplay(logfile, "%B %B %B", statu, stage, len);
+                        $fdisplay(log, "%t load data: val: %D; stage: %D; len: %D; nxt_addr: %8H;", $realtime, data_read_in, stage, len, buffer_addr + stage);
                     `endif
-                    ram_read_or_write   <= 1'b1;
                     case (stage)
                         3'b001: lsb_out_data[7:0]   <= data_read_in;
                         3'b010: lsb_out_data[15:8]  <= data_read_in;
@@ -165,9 +193,12 @@ end
                         if (precise == 3'b100) begin
                             lsb_out_data[31:8]  <= {24{data_read_in[7]}};
                         end
-                        if (precise == 3'b101) begin
+                        else if (precise == 3'b101) begin
                             lsb_out_data[31:16]  <= {16{data_read_in[7]}};
                         end
+                        `ifdef JY
+                            $fdisplay(log, "%t load data end; change staus;", $realtime);
+                        `endif
                     end
                 end
             end

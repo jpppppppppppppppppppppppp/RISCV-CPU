@@ -129,7 +129,7 @@ end
                     commit_reg_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(log, "%t ROB commit reg write rob-id: %D;inst_PC: %8H; reg-id:%D; reg-value:%D", $realtime, tail, PC[tail], rd[tail], value[tail]);
+                        $fdisplay(log, "%t ROB commit reg write rob-id: %D; inst_PC: %8H; reg-id:%D; reg-value: %D", $realtime, tail, PC[tail], rd[tail], value[tail]);
                     `endif
                 end
                 else if (type[tail] == 2'b01) begin
@@ -137,13 +137,13 @@ end
                     commit_lsb_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(log, "%t ROB commit mem write rob-id: %D;inst_PC: %8H;", $realtime, tail, PC[tail]);
+                        $fdisplay(log, "%t ROB commit mem write rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                 end
                 else if (type[tail] == 2'b10) begin
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(log, "%t ROB commit branch rob-id: %D;inst_PC: %8H;", $realtime, tail, PC[tail]);
+                        $fdisplay(log, "%t ROB commit branch rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                     commit_update_config    <= 1'b1;
                     commit_update_pc    <= PC[tail];

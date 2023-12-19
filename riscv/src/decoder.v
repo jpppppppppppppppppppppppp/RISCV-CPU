@@ -74,9 +74,9 @@ module decoder (
     input   wire    [31:0]  lsb_value
 );
 `ifdef JY
-integer logfile;
+integer log;
 initial begin
-    logfile = $fopen("decoder.log", "w");
+    log = $fopen("decoder.log", "w");
 end
 `endif
     // 31           25 24         20 19         15 14 12 11          7 6       0
@@ -211,15 +211,13 @@ end
                     rs2_rob_id  = rs2_rob_entry;
                 end
                 `ifdef JY
-                    $fdisplay(logfile, "PC: %D %8H", inst_PC, inst_PC);
-                    $fdisplay(logfile, "inst: %8H", inst);
-                    $fdisplay(logfile, "opcode: %7B", opcode);
-                    $fdisplay(logfile, "Q1: %D %1B %7B", rs1_index, rs1_need_rob, rs1_rob_id);
-                    $fdisplay(logfile, "Q2: %D %1B %7B", rs2_index, rs2_need_rob, rs2_rob_id);
-                    $fdisplay(logfile, "rd: %D %7B", rd, rob_need);
+                    $fdisplay(log, "PC: %D %8H; inst: %8H; opcode: %7B; Q1: %D %1B %D; Q2: %D %1B %D; rd: %D; rob: %D", inst_PC, inst_PC, inst, opcode, rs1_index, rs1_need_rob, rs1_rob_id, rs2_index, rs2_need_rob, rs2_rob_id, rd, rob_need);
                 `endif
                 case (opcode)
                     7'b0110111: begin   // LUI
+                        `ifdef JY
+                            $fdisplay(log, "%t LUI;", $realtime);
+                        `endif
                         imm = {inst[31:12], 12'b0};
                         rob_ans = {inst[31:12], 12'b0};
                         rs_config   = 1'b0;
@@ -229,6 +227,9 @@ end
                         rf_config   = 1'b1;
                     end
                     7'b0010111: begin   // AUIPC
+                        `ifdef JY
+                            $fdisplay(log, "%t AUIPC;", $realtime);
+                        `endif
                         imm = {inst[31:12], 12'b0};
                         rob_ans = 32'b0;
                         rs_config   = 1'b1;
@@ -238,6 +239,9 @@ end
                         rf_config   = 1'b1;
                     end
                     7'b1101111: begin               // JAL
+                        `ifdef JY
+                            $fdisplay(log, "%t JAL;", $realtime);
+                        `endif
                         imm = {{12{inst[31]}}, inst[19:12], inst[20], inst[30:21], 1'b0};
                         rob_ans = 32'b0;
                         rs_config   = 1'b1;
@@ -247,6 +251,9 @@ end
                         rf_config   = 1'b1;
                     end
                     7'b1100111: begin               // JALR
+                        `ifdef JY
+                            $fdisplay(log, "%t JALR;", $realtime);
+                        `endif
                         imm = inst_PC + 4;
                         rob_ans = inst_PC + 4;
                         ROB_type    = 2'b00;
@@ -254,6 +261,9 @@ end
                         lsb_config  = 1'b0;
                         rf_config   = 1'b1;
                         if (rs1_need_rob) begin
+                            `ifdef JY
+                                $fdisplay(log, "%t JALR need pause;", $realtime);
+                            `endif
                             JALR_need_pause = 1'b1;
                             JALR_pause_rej  = 1'b0;
                             is_wait = 1'b1;
@@ -261,6 +271,9 @@ end
                             offset  = {{21{inst[31]}}, inst[30:20]};
                         end
                         else begin
+                            `ifdef JY
+                                $fdisplay(log, "%t JALR don't pause; new PC: %8H", $realtime, (rs1_val + {{21{inst[31]}}, inst[30:20]}) & 32'b11111111111111111111111111111110);
+                            `endif
                             JALR_need_pause = 1'b0;
                             JALR_pause_rej  = 1'b1;
                             is_wait = 1'b0;
@@ -268,6 +281,9 @@ end
                         end
                     end
                     7'b1100011: begin               // branch
+                        `ifdef JY
+                            $fdisplay(log, "%t Branch;", $realtime);
+                        `endif
                         imm = {{21{inst[31]}}, inst[7], inst[30:25], inst[11:8], 1'b0};
                         rs_config   = 1'b1;
                         rd  = 5'b0;
@@ -277,6 +293,9 @@ end
                         rf_config   = 1'b0;
                     end
                     7'b0000011: begin               // load
+                        `ifdef JY
+                            $fdisplay(log, "%t Load;", $realtime);
+                        `endif
                         imm = {{21{inst[31]}}, inst[30:20]};
                         lsb_config  = 1'b1;
                         lsb_store_or_load   = 1'b0;
@@ -285,6 +304,9 @@ end
                         rf_config   = 1'b1;
                     end
                     7'b0100011: begin               // store
+                        `ifdef JY
+                            $fdisplay(log, "%t Store;", $realtime);
+                        `endif
                         imm = {{21{inst[31]}}, inst[30:25], inst[11:7]};
                         lsb_config  = 1'b1;
                         lsb_store_or_load   = 1'b1;
@@ -294,6 +316,9 @@ end
                         rf_config   = 1'b0;
                     end
                     7'b0010011: begin               // op li
+                        `ifdef JY
+                            $fdisplay(log, "%t Opli;", $realtime);
+                        `endif
                         imm = {{21{inst[31]}}, inst[30:20]};
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
@@ -302,6 +327,9 @@ end
                         rf_config   = 1'b1;
                     end
                     7'b0110011:begin                // op
+                        `ifdef JY
+                            $fdisplay(log, "%t Op;", $realtime);
+                        `endif
                         rs_config   = 1'b1;
                         ROB_type    = 2'b00;
                         rob_ready   = 1'b0;

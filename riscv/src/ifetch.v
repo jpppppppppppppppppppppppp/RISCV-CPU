@@ -41,9 +41,9 @@ module ifetch (
     // Total Size = Block Num * Each Block Size = 1024 Bytes
     // We need [Block Num] Valid, [tag_width * Block Num] Tag, [Each Block Width * Block Num] Data
 `ifdef JY
-integer logfile;
+integer log;
 initial begin
-    logfile = $fopen("IF.log", "w");
+    log = $fopen("IF.log", "w");
 end
 `endif
     reg             Valid   [15:0];
@@ -121,6 +121,9 @@ end
     integer i;
     always @(posedge clk) begin
         if (rst) begin
+            `ifdef JY
+                $fdisplay(log, "%t rst: %B;", $realtime, rst);
+            `endif
             PC  <= 32'b0;
             missing_PC  <= 32'b0;
             missing_config  <= 1'b0;
@@ -136,40 +139,44 @@ end
             if (rollback_config) begin
                 inst_rdy    <= 1'b0;
                 PC  <= rollback_pc;
+                `ifdef JY
+                    $fdisplay(log, "%t rollback: PC: %8H;", $realtime, rollback_pc);
+                `endif
             end
-            else begin
-                if (is_hit && (!rob_is_full)) begin
-                    inst_rdy    <= 1'b1;
-                    inst    <= inst_get;
-                    out_PC  <= PC;
-                    PC  <= Pred_PC;
-                    is_Jump <= Pred_Jump;
-                    `ifdef JY
-                        $fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(logfile, "PC:%D(%8H) -> %D(%8H)", PC, PC, Pred_PC, Pred_PC);
-                        $fdisplay(logfile, "inst:%32B", inst_get);
-                        $fdisplay(logfile, "index:%B offset:%B tag:%B", index, offset, tag);
-                    `endif
-                end
-                else begin
-                    inst_rdy    <= 1'b0;
-                end
+            else if(JALR_pause_rej) begin
+                `ifdef JY
+                    $fdisplay(log, "%t return from JALR; new PC: %8H;", $realtime, JALR_PC);
+                `endif
+                PC  <= JALR_PC;
+                inst_rdy    <= 1'b0;
             end
-            if (!JALR_need_pause) begin
+            else if (!JALR_need_pause) begin
+                `ifdef JY
+                    $fdisplay(log, "%t not wait for JALR; now status: %B;", $realtime, status);
+                `endif
                 if  (status == 1'b0) begin
+                    if (is_hit && (!rob_is_full)) begin
+                        inst_rdy    <= 1'b1;
+                        inst    <= inst_get;
+                        out_PC  <= PC;
+                        PC  <= Pred_PC;
+                        is_Jump <= Pred_Jump;
+                        `ifdef JY
+                            $fdisplay(log, "%t hit: PC:%D(%8H) -> %D(%8H); inst: %32B; index: %B; offset: %B; tag: %B;", $realtime, PC, PC, Pred_PC, Pred_PC, inst_get, index, offset, tag);
+                        `endif
+                    end
+                    else begin
+                        `ifdef JY
+                            $fdisplay(log, "%t hit: %B; rob_full: %B;", $realtime, is_hit, rob_is_full);
+                        `endif
+                        inst_rdy    <= 1'b0;
+                    end
                     if (!is_hit) begin
                         status  <= 1'b1;
                         missing_PC  <= PC;
                         missing_config  <= 1'b1;
                         `ifdef JY
-                            $fdisplay(logfile, "!%t", $realtime);
-                            $fdisplay(logfile, "miss PC:%D", PC);
-                        `endif
-                    end
-                    else begin
-                        `ifdef JY
-                            $fdisplay(logfile, "!%t", $realtime);
-                            $fdisplay(logfile, "hit PC:%D", PC);
+                            $fdisplay(log, "%t mspc send to ctrl: %8H;", $realtime, PC);
                         `endif
                     end
                 end
@@ -182,16 +189,10 @@ end
                         missing_PC  <= 32'b0;
                         status  <= 1'b0;
                         `ifdef JY
-                            $fdisplay(logfile, "@%t", $realtime);
-                            $fdisplay(logfile, "PC:%D", PC);
-                            $fdisplay(logfile, "GET%512B", return_row);
-                            $fdisplay(logfile, "valid%B %D", missed_pc_index, missing_PC);
+                            $fdisplay(log, "%t missing return: PC: %D; GET: %X;", $realtime, missing_PC, return_row);
                         `endif
                     end
                 end
-            end
-            else if (JALR_pause_rej) begin
-                PC  <= JALR_PC;
             end
         end
     end
