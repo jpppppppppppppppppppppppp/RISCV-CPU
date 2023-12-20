@@ -53,6 +53,7 @@ module cpu(
   wire  [31:0]  LSB_out_to_mem_ctrl_addr;
   wire  [31:0]  LSB_out_to_mem_ctrl_data;
   wire  [2:0]   LSB_out_to_mem_ctrl_precise;
+  wire  [3:0]   LSB_out_to_mem_ctrl_rob;
   wire  [4:0]   query_rs1;
   wire  [4:0]   query_rs2;
   wire  [3:0]   query_rob1;
@@ -101,7 +102,7 @@ module cpu(
   wire  [3:0]   rs_alu_rob;
   wire          rollback;
   wire  [31:0]  rollback_PC;
-  wire  [31:0]  rob_nxt_empty_ROB_id;
+  wire  [3:0]   rob_nxt_empty_ROB_id;
   wire  [31:0]  rob_rs1_rob_value;
   wire          rob_rs1_rob_rdy;
   wire  [31:0]  rob_rs2_rob_value;
@@ -157,6 +158,7 @@ module cpu(
     .mem_ctrl_out_addr            (LSB_out_to_mem_ctrl_addr),
     .mem_ctrl_out_data            (LSB_out_to_mem_ctrl_data),
     .mem_ctrl_out_precise         (LSB_out_to_mem_ctrl_precise),
+    .mem_ctrl_out_rob             (LSB_out_to_mem_ctrl_rob),
     .mem_ctrl_in_config           (mem_ctrl_lsb_config),
     .mem_ctrl_in_data             (mem_ctrl_lsb_data),
     .broadcast_config             (LSB_out_config),
@@ -202,6 +204,7 @@ module cpu(
     .lsb_addr                     (LSB_out_to_mem_ctrl_addr),
     .lsb_data                     (LSB_out_to_mem_ctrl_data),
     .lsb_precise                  (LSB_out_to_mem_ctrl_precise),
+    .lsb_rob                      (LSB_out_to_mem_ctrl_rob),
     .lsb_out_config               (mem_ctrl_lsb_config),
     .lsb_out_data                 (mem_ctrl_lsb_data)
   );

@@ -12,6 +12,7 @@ module LSB(
     output  reg     [31:0]  mem_ctrl_out_addr,
     output  reg     [31:0]  mem_ctrl_out_data,
     output  reg     [2:0]   mem_ctrl_out_precise,
+    output  reg     [3:0]   mem_ctrl_out_rob,
     input   wire            mem_ctrl_in_config,
     input   wire    [31:0]  mem_ctrl_in_data,
 
@@ -33,7 +34,7 @@ module LSB(
     input   wire            inst_config,
     input   wire            inst_store_or_load, // 1 means store
     input   wire    [2:0]   inst_precise,
-    input   wire    [4:0]   inst_ROB,
+    input   wire    [3:0]   inst_ROB,
     input   wire    [31:0]  inst_rs1_val,
     input   wire            inst_rs1_need_ROB,
     input   wire    [3:0]   inst_rs1_ROB_id,
@@ -146,6 +147,7 @@ end
                 end
                 if (!is_wait && ready[tail]) begin
                     mem_ctrl_out_config <= 1'b1;
+                    mem_ctrl_out_rob    <= ROB_entry[tail];
                     is_wait <= 1'b1;
                     if (ls[tail]) begin
                         `ifdef JY
