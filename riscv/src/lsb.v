@@ -78,6 +78,7 @@ end
             head    <= 4'b0;
             tail    <= 4'b0;
             mem_ctrl_out_config <= 1'b0;
+            broadcast_config    <= 1'b0;
         end
         else if (rdy) begin
             if (rollback_config) begin
@@ -106,7 +107,7 @@ end
                     is_wait <= 1'b0;
                     tail    <= tail + 1;
                     mem_ctrl_out_config <= 1'b0;
-                    if (last_commit == head) begin
+                    if (last_commit == tail) begin
                         last_commit <=  5'b10000;
                         `ifdef JY
                             $fdisplay(log, "%t rollback: now no new commited;", $realtime);
@@ -116,13 +117,15 @@ end
                         `ifdef JY
                             $fdisplay(log, "%t rollback: load broadcast id: %D; rob: %D; value: %D;", $realtime, tail, ROB_entry[tail], mem_ctrl_in_data);
                         `endif
-                        broadcast_config    <= 1'b1;
-                        broadcast_value <= mem_ctrl_in_data;
-                        broadcast_ROB   <= ROB_entry[tail];
+                        broadcast_config    <= 1'b0;
+                    end
+                    else begin
+                        broadcast_config    <= 1'b0;
                     end
                 end
             end
             else begin
+                broadcast_config    <= 1'b0;
                 if (is_wait && mem_ctrl_in_config) begin
                     `ifdef JY
                         $fdisplay(log, "%t have work end", $realtime);
@@ -196,12 +199,14 @@ end
                                 $fdisplay(log, "%t alu change destination: index: %D; ROB: %D->%D; value: %D;", $realtime, j, destination_ROB[j], alu_in_ROB, alu_in_value);
                             `endif
                             destination_add[j]  <= alu_in_value;
+                            destination_need[j] <= 1'b0;
                         end
                         if (value_need[j] && (value_ROB[j] == alu_in_ROB)) begin
                             `ifdef JY
                                 $fdisplay(log, "%t alu change value: index: %D; ROB: %D->%D; value: %D;", $realtime, j, value_ROB[j], alu_in_ROB, alu_in_value);
                             `endif
                             value[j]    <= alu_in_value;
+                            value_need[j]   <= 1'b0;
                         end
                     end
                 end
@@ -216,9 +221,11 @@ end
                                 $fdisplay(log, "%t lsb change destination: index: %D; ROB: %D->%D; value: %D;", $realtime, k, destination_ROB[k], lsb_in_ROB, lsb_in_value);
                             `endif
                             destination_add[k]  <= lsb_in_value;
+                            destination_need[k] <= 1'b0;
                         end
                         if (value_need[k] && (value_ROB[k] == lsb_in_ROB)) begin
                             value[k]    <= lsb_in_value;
+                            value_need[k]   <= 1'b0;
                             `ifdef JY
                                 $fdisplay(log, "%t lsb change value: index: %D; ROB: %D->%D; value: %D;", $realtime, k, value_ROB[k], lsb_in_ROB, lsb_in_value);
                             `endif                            

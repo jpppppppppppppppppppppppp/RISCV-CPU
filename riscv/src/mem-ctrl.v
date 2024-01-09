@@ -110,13 +110,13 @@ end
                 end
             end
             else if (statu == 2'b01) begin
-                if (rollback) begin
-                    `ifdef JY
-                        $fdisplay(log, "%t inst_fetch stopped by rollback %B", $realtime, rollback);
-                    `endif
-                    statu   <= 2'b00;
-                end
-                else begin
+                
+                
+                
+                
+                
+                
+                
                     buffer[pos]    <= data_read_in;
                     `ifdef JY
                         $fdisplay(log, "%t fetch inst get: value: %D", $realtime, data_read_in);
@@ -146,7 +146,7 @@ end
                             pos <= pos + 1;
                         end
                     end
-                end
+                
             end
             else if (statu == 2'b10) begin
                 if ((buffer_addr[17:16] != 2'b11) || (!io_buffer_full)) begin
@@ -190,14 +190,15 @@ end
                         $fdisplay(log, "%t load data: val: %D; stage: %D; len: %D; nxt_addr: %8H;", $realtime, data_read_in, stage, len, buffer_addr + stage);
                     `endif
                     case (stage)
-                        3'b001: lsb_out_data[7:0]   <= data_read_in;
-                        3'b010: lsb_out_data[15:8]  <= data_read_in;
-                        3'b011: lsb_out_data[23:16] <= data_read_in;
-                        3'b100: lsb_out_data[31:24] <= data_read_in;
+                        3'b010: lsb_out_data[7:0]   <= data_read_in;
+                        3'b011: lsb_out_data[15:8]  <= data_read_in;
+                        3'b100: lsb_out_data[23:16] <= data_read_in;
+                        3'b101: lsb_out_data[31:24] <= data_read_in;
                     endcase
                     addr_to_ram <= buffer_addr + stage;
                     stage   <= stage + 1;
-                    if (stage == len) begin
+                    if (stage == len + 1) begin
+                        stage   <= 3'b0;
                         lsb_out_config  <= 1'b1;
                         statu   <= 2'b00;
                         addr_to_ram <= 32'b0;

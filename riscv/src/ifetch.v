@@ -56,8 +56,9 @@ end
     wire    [3:0]   offset  = PC[5:2];
     wire            is_hit  = Valid[index] && (Tag[index] == tag);
     // if missed
-    wire    [3:0]   missed_pc_index = PC[9:6];
-    wire    [21:0]  missed_pc_tag   = PC[31:10];
+    reg     [31:0]  missed_PC;
+    wire    [3:0]   missed_pc_index = missed_PC[9:6];
+    wire    [21:0]  missed_pc_tag   = missed_PC[31:10];
 
     wire    [511:0] cur_row = Data[index];
     wire    [31:0]  cur_block   [15:0];
@@ -79,6 +80,7 @@ end
     wire    [9:0]   Pred_index  = PC[16:7];
     wire    [9:0]   Upd_index   = update_pc[16:7];
     reg             Pred_Jump; // by Predictor[Pred_index][1]
+
 
     // for update
     integer j;
@@ -174,6 +176,7 @@ end
                     if (!is_hit) begin
                         status  <= 1'b1;
                         missing_PC  <= PC;
+                        missed_PC   <= PC;
                         missing_config  <= 1'b1;
                         `ifdef JY
                             $fdisplay(log, "%t mspc send to ctrl: %8H;", $realtime, PC);

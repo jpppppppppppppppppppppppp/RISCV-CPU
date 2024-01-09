@@ -45,6 +45,10 @@ module ROB(
     output  reg     [31:0]  commit_update_pc,
     output  reg             commit_update_jump,
 
+    `ifdef JY
+    input   wire    [1023:0]    reg_debugger,
+    `endif
+
     input   wire            alu_config,
     input   wire            alu_need_jump,
     input   wire    [31:0]  alu_jump_pc,
@@ -57,8 +61,12 @@ module ROB(
 );
 `ifdef JY
 integer log;
+integer co;
+integer pai;
 initial begin
     log = $fopen("rob.log", "w");
+    co = $fopen("commit.log", "w");
+    pai = $fopen("pai.log", "w");
 end
 `endif
     reg     [1:0]   type    [15:0]; // 00 for RegisterWrite, 01 for MemoryWrite, 10 for Branch
@@ -116,6 +124,7 @@ end
             commit_update_pc    <= 32'b0;
             commit_update_jump  <= 1'b0;
             if ((!empty) && ready[tail]) begin
+                $fdisplay(pai, "%8H %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D", PC[tail], reg_debugger[31:0], reg_debugger[63:32], reg_debugger[95:64], reg_debugger[127:96], reg_debugger[159:128], reg_debugger[191:160], reg_debugger[223:192], reg_debugger[255:224], reg_debugger[287:256], reg_debugger[319:288], reg_debugger[351:320], reg_debugger[383:352], reg_debugger[415:384], reg_debugger[447:416], reg_debugger[479:448], reg_debugger[511:480], reg_debugger[543:512], reg_debugger[575:544], reg_debugger[607:576], reg_debugger[639:608], reg_debugger[671:640], reg_debugger[703:672], reg_debugger[735:704], reg_debugger[767:736], reg_debugger[799:768], reg_debugger[831:800], reg_debugger[863:832], reg_debugger[895:864], reg_debugger[927:896], reg_debugger[959:928], reg_debugger[991:960], reg_debugger[1023:992]);
                 commit_config   <= 1'b1;
                 commit_ROB  <= tail;
                 commit_value    <= value[tail];
@@ -129,6 +138,7 @@ end
                     commit_reg_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(co, "%8H %t ROB commit reg write rob-id: %D; reg-id:%D; reg-value: %D", PC[tail], $realtime, tail, rd[tail], value[tail]);
                         $fdisplay(log, "%t ROB commit reg write rob-id: %D; inst_PC: %8H; reg-id:%D; reg-value: %D", $realtime, tail, PC[tail], rd[tail], value[tail]);
                     `endif
                 end
@@ -137,12 +147,14 @@ end
                     commit_lsb_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(co, "%8H %t ROB commit mem write rob-id: %D;", PC[tail], $realtime, tail);
                         $fdisplay(log, "%t ROB commit mem write rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                 end
                 else if (type[tail] == 2'b10) begin
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
+                        $fdisplay(co, "%8H %t ROB commit branch rob-id: %D;", PC[tail], $realtime, tail);
                         $fdisplay(log, "%t ROB commit branch rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                     commit_update_config    <= 1'b1;
@@ -152,6 +164,7 @@ end
                         rollback_config <= 1'b1;
                         rollback_pc <= value[tail];
                         `ifdef JY
+                            $fdisplay(co, "%t ROB need rollback: new-PC: %8H", $realtime, value[tail]);
                             $fdisplay(log, "%t ROB need rollback: new-PC: %8H", $realtime, value[tail]);
                         `endif
                     end
@@ -200,7 +213,7 @@ end
             end
             if (lsb_config) begin
                 `ifdef JY
-                    $fdisplay(log, "%t ROB: lsb_config: rob-id: %D; lsb_value: %D; rob_type: %2B", lsb_rob_entry, lsb_value, type[lsb_rob_entry]);
+                    $fdisplay(log, "%t ROB: lsb_config: rob-id: %D; lsb_value: %D; rob_type: %2B", $realtime, lsb_rob_entry, lsb_value, type[lsb_rob_entry]);
                 `endif
                 ready[lsb_rob_entry]    <= 1'b1;
                 value[lsb_rob_entry]    <= lsb_value;

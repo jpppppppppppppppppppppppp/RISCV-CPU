@@ -24,12 +24,22 @@ module registerfile(
     input   wire    [31:0]  rs_to_write_val,
     input   wire    [3:0]   commit_rob_id,
 
+    `ifdef JY
+    output  wire    [1023:0]  allregs,
+    `endif
+
     // add dependency from decoder by opcode
     input   wire            decoder_done,
     input   wire    [4:0]   rd,
     input   wire    [3:0]   rob_need
 );
 `ifdef JY
+    genvar y;
+    generate
+        for (y = 0; y < 32; y = y + 1) begin
+            assign allregs[y * 32 + 31: y * 32] = reg_val[y];
+        end
+    endgenerate
 integer log;
 initial begin
     log = $fopen("rf.log", "w");

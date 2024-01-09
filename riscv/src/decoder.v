@@ -249,6 +249,8 @@ end
                         rob_ready   = 1'b0;
                         lsb_config  = 1'b0;
                         rf_config   = 1'b1;
+                        rs1_need_rob    = 1'b0;
+                        rs2_need_rob    = 1'b0;
                     end
                     7'b1100111: begin               // JALR
                         `ifdef JY

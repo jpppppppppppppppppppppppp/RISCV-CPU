@@ -126,7 +126,9 @@ module cpu(
   wire          rf_rs2_dirty;
   wire  [3:0]   rf_rs2_rob2;
   wire  [31:0]  rf_rs2_val;
-  
+  `ifdef JY
+  wire  [1023:0]  debugger;
+  `endif
   ALU cpu_ALU(
     .clk                          (clk_in),
     .rst                          (rst_in),
@@ -343,6 +345,9 @@ module cpu(
     .commit_rob_id                (rob_commit_reg_rob),
     .decoder_done                 (decoder_rf_config),
     .rd                           (decoder_rd),
+    `ifdef JY
+    .allregs                      (debugger),
+    `endif
     .rob_need                     (decoder_rob_entry)
   );
 
@@ -387,6 +392,9 @@ module cpu(
     .alu_rob_entry                (ALU_out_rob),
     .lsb_config                   (LSB_out_config),
     .lsb_rob_entry                (LSB_out_rob),
+    `ifdef JY
+    .reg_debugger                 (debugger),
+    `endif
     .lsb_value                    (LSB_out_val)
   );
 endmodule
