@@ -9,14 +9,14 @@ module registerfile(
     // query from decoder
     // input: rs_index, output: rs_is_dirty, rs_rob_entry_id, rs_value
     input   wire    [4:0]   rs1_index,
-    output  reg             rs1_dirty,
-    output  reg     [3:0]   rs1_rob_entry,
-    output  reg     [31:0]  rs1_val,
+    output  wire             rs1_dirty,
+    output  wire     [3:0]   rs1_rob_entry,
+    output  wire     [31:0]  rs1_val,
 
     input   wire    [4:0]   rs2_index,
-    output  reg             rs2_dirty,
-    output  reg     [3:0]   rs2_rob_entry,
-    output  reg     [31:0]  rs2_val,
+    output  wire             rs2_dirty,
+    output  wire     [3:0]   rs2_rob_entry,
+    output  wire     [31:0]  rs2_val,
 
     // commit reg write
     input   wire            commit_config,
@@ -51,41 +51,15 @@ end
     wire            is_commit   = commit_config && (rs_to_write_id != 5'b0);
     wire            need_change_dirty   = is_commit && dirty[rs_to_write_id] && (rob_entry[rs_to_write_id] == commit_rob_id);
     // handle query
-    always @(*) begin
-        if(is_commit && (rs1_index == rs_to_write_id) && need_change_dirty) begin
-            rs1_dirty   = 1'b0;
-            rs1_rob_entry   = 4'b0;
-            rs1_val = rs_to_write_val;
-            `ifdef JY
-                $fdisplay(log, "%t query when change dirty: rs1-id: %d; rs1-val: %D", $realtime, rs1_index, rs_to_write_val);
-            `endif
-        end
-        else begin
-            rs1_dirty   = dirty[rs1_index];
-            rs1_rob_entry   = rob_entry[rs1_index];
-            rs1_val = reg_val[rs1_index];
-            `ifdef JY
-                $fdisplay(log, "%t query: rs1-id: %d; rs1-val: %D; rs1-dirty: %B; rs1-rob: %D;", $realtime, rs1_index, reg_val[rs1_index], dirty[rs1_index], rob_entry[rs1_index]);
-            `endif
-        end
-
-        if(is_commit && (rs2_index == rs_to_write_id) && need_change_dirty) begin
-            rs2_dirty   = 1'b0;
-            rs2_rob_entry   = 4'b0;
-            rs2_val = rs_to_write_val;
-            `ifdef JY
-                $fdisplay(log, "%t query when change dirty: rs2-id: %d; rs2-val: %D", $realtime, rs2_index, rs_to_write_val);
-            `endif
-        end
-        else begin
-            rs2_dirty   = dirty[rs2_index];
-            rs2_rob_entry   = rob_entry[rs2_index];
-            rs2_val = reg_val[rs2_index];
-            `ifdef JY
-                $fdisplay(log, "%t query: rs2-id: %d; rs2-val: %D; rs2-dirty: %B; rs2-rob: %D;", $realtime, rs2_index, reg_val[rs2_index], dirty[rs2_index], rob_entry[rs2_index]);
-            `endif
-        end        
-    end
+    wire    rs1_hit = is_commit && (rs1_index == rs_to_write_id) && need_change_dirty;
+    assign  rs1_dirty   = (rs1_hit) ? (1'b0) : dirty[rs1_index];
+    assign  rs1_rob_entry   = (rs1_hit) ? (4'b0) : rob_entry[rs1_index];
+    assign  rs1_val = (rs1_hit) ? (rs_to_write_val) : reg_val[rs1_index];
+    
+    wire    rs2_hit = is_commit && (rs2_index == rs_to_write_id) && need_change_dirty;
+    assign  rs2_dirty   = (rs2_hit) ? (1'b0) : dirty[rs2_index];
+    assign  rs2_rob_entry   = (rs2_hit) ? (4'b0) : rob_entry[rs2_index];
+    assign  rs2_val = (rs2_hit) ? (rs_to_write_val) : reg_val[rs2_index];
     
     // hand opcode
     integer i,j;

@@ -21,11 +21,11 @@ module ROB(
 
     // handle query from decoder
     input   wire    [3:0]   rs1_rob_q_entry,
-    output  reg     [31:0]  rs1_rob_value,
-    output  reg             rs1_rob_rdy,
+    output  wire     [31:0]  rs1_rob_value,
+    output  wire             rs1_rob_rdy,
     input   wire    [3:0]   rs2_rob_q_entry,
-    output  reg     [31:0]  rs2_rob_value,
-    output  reg             rs2_rob_rdy,   
+    output  wire     [31:0]  rs2_rob_value,
+    output  wire             rs2_rob_rdy,   
 
     output  reg             commit_config,
     output  reg     [3:0]   commit_ROB,
@@ -80,12 +80,12 @@ end
     reg     [3:0]   head;
     reg     [3:0]   tail;
     reg             empty;
-    always @(*) begin
-        rs1_rob_value   = value[rs1_rob_q_entry];
-        rs1_rob_rdy = ready[rs1_rob_q_entry];
-        rs2_rob_value   = value[rs2_rob_q_entry];
-        rs2_rob_rdy = ready[rs2_rob_q_entry];
-    end
+    
+    assign    rs1_rob_value   = value[rs1_rob_q_entry];
+    assign    rs1_rob_rdy = ready[rs1_rob_q_entry];
+    assign    rs2_rob_value   = value[rs2_rob_q_entry];
+    assign    rs2_rob_rdy = ready[rs2_rob_q_entry];
+    
     integer i,j;
     always @(posedge clk) begin
         if (rst) begin
@@ -154,7 +154,7 @@ end
             commit_update_jump  <= 1'b0;
             if ((!empty) && ready[tail]) begin
                 `ifdef JY
-                $fdisplay(pai, "%8H %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D", PC[tail], reg_debugger[31:0], reg_debugger[63:32], reg_debugger[95:64], reg_debugger[127:96], reg_debugger[159:128], reg_debugger[191:160], reg_debugger[223:192], reg_debugger[255:224], reg_debugger[287:256], reg_debugger[319:288], reg_debugger[351:320], reg_debugger[383:352], reg_debugger[415:384], reg_debugger[447:416], reg_debugger[479:448], reg_debugger[511:480], reg_debugger[543:512], reg_debugger[575:544], reg_debugger[607:576], reg_debugger[639:608], reg_debugger[671:640], reg_debugger[703:672], reg_debugger[735:704], reg_debugger[767:736], reg_debugger[799:768], reg_debugger[831:800], reg_debugger[863:832], reg_debugger[895:864], reg_debugger[927:896], reg_debugger[959:928], reg_debugger[991:960], reg_debugger[1023:992]);
+                $fdisplay(pai, "%8H", PC[tail]);
                 `endif
                 commit_config   <= 1'b1;
                 commit_ROB  <= tail;

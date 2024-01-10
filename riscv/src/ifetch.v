@@ -29,6 +29,7 @@ module ifetch (
     input   wire            rob_is_full,
     input   wire            lsb_is_full,
     // JALR pause
+    output  reg             JALR_statu,
     input   wire            JALR_need_pause,
     input   wire            JALR_pause_rej,
     input   wire    [31:0]  JALR_PC
@@ -136,9 +137,12 @@ end
             inst_rdy    <= 1'b0;
             inst    <= 32'b0;
             status  <= 1'b0;
+            JALR_statu  <= 1'b0;
         end
         else if (rdy) begin
+            JALR_statu  <= JALR_need_pause;
             if (rollback_config) begin
+                JALR_statu  <= 1'b0;
                 inst_rdy    <= 1'b0;
                 PC  <= rollback_pc;
                 `ifdef JY
@@ -150,6 +154,9 @@ end
                     $fdisplay(log, "%t return from JALR; new PC: %8H;", $realtime, JALR_PC);
                 `endif
                 PC  <= JALR_PC;
+                inst_rdy    <= 1'b0;
+            end
+            else if (JALR_need_pause) begin
                 inst_rdy    <= 1'b0;
             end
             else if (!JALR_need_pause) begin

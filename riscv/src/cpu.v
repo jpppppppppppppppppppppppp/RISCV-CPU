@@ -127,6 +127,7 @@ module cpu(
   wire  [3:0]   rf_rs2_rob2;
   wire  [31:0]  rf_rs2_val;
   wire          lsb_full;
+  wire          JALR;
   `ifdef JY
   wire  [1023:0]  debugger;
   `endif
@@ -193,7 +194,7 @@ module cpu(
     .clk                          (clk_in),
     .rst                          (rst_in),
     .rdy                          (rdy_in),
-    .io_buffer_full               (io_buffer_full),
+    .io_buffer_full               (1'b0),
     .rollback                     (rollback),
     .ram_read_or_write            (mem_wr),
     .addr_to_ram                  (mem_a),
@@ -269,7 +270,8 @@ module cpu(
     .alu_value                    (ALU_out_val),
     .lsb_rob_config               (LSB_out_config),
     .lsb_rob_entry                (LSB_out_rob),
-    .lsb_value                    (LSB_out_val)
+    .lsb_value                    (LSB_out_val),
+    .JALR_statu                   (JALR)
   );
 
   ifetch cpu_ifetch(
@@ -293,7 +295,8 @@ module cpu(
     .JALR_need_pause              (decoder_JALR_need_pause),
     .JALR_pause_rej               (decoder_JALR_pause_rej),
     .JALR_PC                      (decoder_JALR_PC),
-    .lsb_is_full                  (lsb_full)
+    .lsb_is_full                  (lsb_full),
+    .JALR_statu                   (JALR)
   );
 
   reservestation cpu_reservestation(

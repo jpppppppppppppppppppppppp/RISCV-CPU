@@ -74,7 +74,7 @@ end
     reg     [4:0]   last_commit;
     reg             empty;
 
-    integer i,j,k,l,m;
+    integer i,j,k,l,m,n;
     always @(posedge clk) begin
         if(rst) begin
             `ifdef JY
@@ -115,10 +115,10 @@ end
                     empty   <= 1'b1;
                     lsb_is_full <= 1'b0;
                     mem_ctrl_out_config <= 1'b0;
-                    for (m = 0; m < 16; m = m + 1) begin
-                        is_commit[m]    <= 1'b0;
-                        used[m] <= 1'b0;
-                        ready[m]    <= 1'b0;
+                    for (n = 0; n < 16; n = n + 1) begin
+                        is_commit[n]    <= 1'b0;
+                        used[n] <= 1'b0;
+                        ready[n]    <= 1'b0;
                     end
                 end
                 else begin
@@ -146,11 +146,27 @@ end
                         `ifdef JY
                             $fdisplay(log, "%t rollback: now no new commited;", $realtime);
                         `endif
+                        head    <= 4'b0;
+                        tail    <= 4'b0;
+                        empty   <= 1'b1;
+                    end
+                    if (last_commit == 5'b10000) begin
+                        `ifdef JY
+                            $fdisplay(log, "%t rollback: no new commit", $realtime);
+                        `endif
+                        is_wait <= 1'b0;
+                        head    <= 4'b0;
+                        tail    <= 4'b0;
+                        empty   <= 1'b1;
+                        lsb_is_full <= 1'b0;
+                        mem_ctrl_out_config <= 1'b0;
+                        for (n = 0; n < 16; n = n + 1) begin
+                            is_commit[n]    <= 1'b0;
+                            used[n] <= 1'b0;
+                            ready[n]    <= 1'b0;
+                        end
                     end
                     if (ls[tail]) begin
-                        `ifdef JY
-                            $fdisplay(log, "%t rollback: load broadcast id: %D; rob: %D; value: %D;", $realtime, tail, ROB_entry[tail], mem_ctrl_in_data);
-                        `endif
                         broadcast_config    <= 1'b0;
                     end
                     else begin
