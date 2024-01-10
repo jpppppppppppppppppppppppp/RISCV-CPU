@@ -14,12 +14,12 @@ module decoder (
 
     // For immediate effect in the next clock, we use wire not reg
     // Query from Register File.
-    output  wire     [4:0]   rs1_index,
+    output  wire     [4:0]  rs1_index,
     input   wire            rs1_dirty,
     input   wire    [3:0]   rs1_rob_entry,
     input   wire    [31:0]  rs1_value,
 
-    output  wire     [4:0]   rs2_index,
+    output  wire     [4:0]  rs2_index,
     input   wire            rs2_dirty,
     input   wire    [3:0]   rs2_rob_entry,
     input   wire    [31:0]  rs2_value,

@@ -83,7 +83,7 @@ end
                     ready[i]    = 1'b1;
                     ready_entry = i;
                     `ifdef JY
-                        $fdisplay(log, "%tdaily_work: id: %D; opcode: %7B; Q1: %D; Q2: %D; PC: %8H; imm: %D;", $realtime, i, opcode[i], Q1[i], Q2[i], PC[i], imm[i]);
+                        $fdisplay(log, "%tdaily_work: id: %D; opcode: %7B; Q1: %D %B; Q2: %D %B; PC: %8H; imm: %D;", $realtime, i, opcode[i], Q1[i], Q1_need[i], Q2[i], Q2_need[i], PC[i], imm[i]);
                     `endif
                 end
             end
@@ -164,14 +164,14 @@ end
                         $fdisplay(log, "%t alu_config: rob-id: %D", $realtime, alu_rob_entry);
                     `endif
                     for (k = 0; k < 16; k = k + 1) begin
-                        if (Q1_need[k] && (Q1[k] == alu_rob_entry)) begin
+                        if (Q1_need[k] && (Q1[k] == alu_rob_entry) && used[k]) begin
                             value1[k]   <= alu_val;
                             Q1_need[k]  <= 1'b0;
                             `ifdef JY
                                 $fdisplay(log, "%t Q1 change reliable: id: %D; value: %D", $realtime, k, alu_val);
                             `endif
                         end
-                        if (Q2_need[k] && (Q2[k] == alu_rob_entry)) begin
+                        if (Q2_need[k] && (Q2[k] == alu_rob_entry) && used[k]) begin
                             value2[k]   <= alu_val;
                             Q2_need[k]  <= 1'b0;
                             `ifdef JY
@@ -185,14 +185,14 @@ end
                         $fdisplay(log, "%t lsb_config: rob-id: %D", $realtime, lsb_rob_entry);
                     `endif
                     for (l = 0; l < 16; l = l + 1) begin
-                        if (Q1_need[l] && (Q1[l] == lsb_rob_entry)) begin
+                        if (Q1_need[l] && (Q1[l] == lsb_rob_entry) && used[l]) begin
                             value1[l]   <= lsb_val;
                             Q1_need[l]  <= 1'b0;
                             `ifdef JY
                                 $fdisplay(log, "%t Q1 change reliable: id: %D; value: %D", $realtime, l, lsb_val);
                             `endif
                         end
-                        if (Q2_need[l] && (Q2[l] == lsb_rob_entry)) begin
+                        if (Q2_need[l] && (Q2[l] == lsb_rob_entry) && used[l]) begin
                             value2[l]   <= lsb_val;
                             Q2_need[l]  <= 1'b0;
                             `ifdef JY

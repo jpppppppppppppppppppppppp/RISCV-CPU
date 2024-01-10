@@ -307,6 +307,7 @@ end
                     used[head]  <= 1'b1;
                     empty   <= 1'b0;
                     lsb_is_full <= (head + 1'b1) == tail;
+                    ready[head] <= 1'b0;
                     if (inst_store_or_load) begin
                         ready[head] <= 1'b0;
                     end
