@@ -27,7 +27,7 @@ module ifetch (
 
     // for pause
     input   wire            rob_is_full,
-
+    input   wire            lsb_is_full,
     // JALR pause
     input   wire            JALR_need_pause,
     input   wire            JALR_pause_rej,
@@ -157,7 +157,7 @@ end
                     $fdisplay(log, "%t not wait for JALR; now status: %B;", $realtime, status);
                 `endif
                 if  (status == 1'b0) begin
-                    if (is_hit && (!rob_is_full)) begin
+                    if (is_hit && (!rob_is_full) && (!lsb_is_full)) begin
                         inst_rdy    <= 1'b1;
                         inst    <= inst_get;
                         out_PC  <= PC;
@@ -167,9 +167,12 @@ end
                             $fdisplay(log, "%t hit: PC:%D(%8H) -> %D(%8H); inst: %32B; index: %B; offset: %B; tag: %B;", $realtime, PC, PC, Pred_PC, Pred_PC, inst_get, index, offset, tag);
                         `endif
                     end
-                    else begin
+                    else if((rob_is_full) || (lsb_is_full)) begin
+                        ;
+                    end
+                    else if (!is_hit)begin
                         `ifdef JY
-                            $fdisplay(log, "%t hit: %B; rob_full: %B;", $realtime, is_hit, rob_is_full);
+                            $fdisplay(log, "%t hit: %B; rob_full: %B;", $realtime, is_hit, rob_is_full, lsb_is_full);
                         `endif
                         inst_rdy    <= 1'b0;
                     end
@@ -181,9 +184,15 @@ end
                         `ifdef JY
                             $fdisplay(log, "%t mspc send to ctrl: %8H;", $realtime, PC);
                         `endif
+                        if ((!rob_is_full) && (!lsb_is_full)) begin
+                            inst_rdy    <= 1'b0;
+                        end
                     end
                 end
                 else begin
+                    if((!rob_is_full) && (!lsb_is_full)) begin
+                        inst_rdy    <= 1'b0;
+                    end
                     if (return_config) begin
                         Valid[missed_pc_index]  <= 1'b1;
                         Tag[missed_pc_index]    <= missed_pc_tag;

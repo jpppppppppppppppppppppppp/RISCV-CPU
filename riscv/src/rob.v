@@ -86,9 +86,9 @@ end
         rs2_rob_value   = value[rs2_rob_q_entry];
         rs2_rob_rdy = ready[rs2_rob_q_entry];
     end
-    integer i;
+    integer i,j;
     always @(posedge clk) begin
-        if (rst || rollback) begin
+        if (rst) begin
             `ifdef JY
                 $fdisplay(log, "%t ROB reset: rst: %B rollback: %B", $realtime, rst, rollback);
             `endif
@@ -110,6 +110,35 @@ end
             commit_update_config    <= 1'b0;
             commit_update_pc    <= 32'b0;
             commit_update_jump  <= 1'b0;
+            for (j = 0; j < 16; j = j + 1) begin
+                ready[j]    <= 1'b0;
+            end
+        end
+        else if (rollback) begin
+            `ifdef JY
+                $fdisplay(log, "%t ROB reset: rst: %B rollback: %B", $realtime, rst, rollback);
+            `endif
+            head    <= 4'b0;
+            tail    <= 4'b0;
+            empty   <= 1'b1;
+            commit_config   <= 1'b0;
+            commit_ROB  <= 4'b0;
+            commit_value    <= 32'b0;
+            nxt_empty_ROB_id    <= 4'b0;
+            rob_full    <= 1'b0;
+            rollback_config <= 1'b0;
+            commit_reg_config   <= 1'b0;
+            commit_reg_id   <= 5'b0;
+            commit_reg_value    <= 32'b0;
+            commit_reg_rob  <= 4'b0;
+            commit_lsb_config   <= 1'b0;
+            commit_lsb_rob  <= 4'b0;
+            commit_update_config    <= 1'b0;
+            commit_update_pc    <= 32'b0;
+            commit_update_jump  <= 1'b0;
+            for (j = 0; j < 16; j = j + 1) begin
+                ready[j]    <= 1'b0;
+            end
         end
         else if (rdy) begin
             nxt_empty_ROB_id    <= head;
@@ -124,13 +153,15 @@ end
             commit_update_pc    <= 32'b0;
             commit_update_jump  <= 1'b0;
             if ((!empty) && ready[tail]) begin
+                `ifdef JY
                 $fdisplay(pai, "%8H %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D %D", PC[tail], reg_debugger[31:0], reg_debugger[63:32], reg_debugger[95:64], reg_debugger[127:96], reg_debugger[159:128], reg_debugger[191:160], reg_debugger[223:192], reg_debugger[255:224], reg_debugger[287:256], reg_debugger[319:288], reg_debugger[351:320], reg_debugger[383:352], reg_debugger[415:384], reg_debugger[447:416], reg_debugger[479:448], reg_debugger[511:480], reg_debugger[543:512], reg_debugger[575:544], reg_debugger[607:576], reg_debugger[639:608], reg_debugger[671:640], reg_debugger[703:672], reg_debugger[735:704], reg_debugger[767:736], reg_debugger[799:768], reg_debugger[831:800], reg_debugger[863:832], reg_debugger[895:864], reg_debugger[927:896], reg_debugger[959:928], reg_debugger[991:960], reg_debugger[1023:992]);
+                `endif
                 commit_config   <= 1'b1;
                 commit_ROB  <= tail;
                 commit_value    <= value[tail];
                 tail    <= tail + 1;
-                empty   <= (head == (tail + 1)) && (!decoder_done);
-                rob_full    <= (head == tail) && decoder_done;
+                empty   <= head == (tail + 1'b1);
+                rob_full    <= head == tail;
                 if (type[tail] == 2'b00) begin
                     commit_reg_config   <= 1'b1;
                     commit_reg_id   <= rd[tail];
@@ -138,7 +169,7 @@ end
                     commit_reg_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(co, "%8H %t ROB commit reg write rob-id: %D; reg-id:%D; reg-value: %D", PC[tail], $realtime, tail, rd[tail], value[tail]);
+                        $fdisplay(co, "%t %8H ROB commit reg write rob-id: %D; reg-id:%D; reg-value: %D", $realtime, PC[tail], tail, rd[tail], value[tail]);
                         $fdisplay(log, "%t ROB commit reg write rob-id: %D; inst_PC: %8H; reg-id:%D; reg-value: %D", $realtime, tail, PC[tail], rd[tail], value[tail]);
                     `endif
                 end
@@ -147,14 +178,14 @@ end
                     commit_lsb_rob  <= tail;
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(co, "%8H %t ROB commit mem write rob-id: %D;", PC[tail], $realtime, tail);
+                        $fdisplay(co, "%t %8H ROB commit mem write rob-id: %D;", $realtime, PC[tail], tail);
                         $fdisplay(log, "%t ROB commit mem write rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                 end
                 else if (type[tail] == 2'b10) begin
                     `ifdef JY
                         //$fdisplay(logfile, "@%t", $realtime);
-                        $fdisplay(co, "%8H %t ROB commit branch rob-id: %D;", PC[tail], $realtime, tail);
+                        $fdisplay(co, "%t %8H ROB commit branch rob-id: %D;", $realtime, PC[tail], tail);
                         $fdisplay(log, "%t ROB commit branch rob-id: %D; inst_PC: %8H;", $realtime, tail, PC[tail]);
                     `endif
                     commit_update_config    <= 1'b1;
@@ -163,9 +194,10 @@ end
                     if (predict[tail] != jump[tail]) begin
                         rollback_config <= 1'b1;
                         rollback_pc <= value[tail];
+                        nxt_empty_ROB_id    <= 4'b0;
                         `ifdef JY
-                            $fdisplay(co, "%t ROB need rollback: new-PC: %8H", $realtime, value[tail]);
-                            $fdisplay(log, "%t ROB need rollback: new-PC: %8H", $realtime, value[tail]);
+                            $fdisplay(co, "ROB need rollback: new-PC: %8H", value[tail]);
+                            $fdisplay(log, "ROB need rollback: new-PC: %8H", value[tail]);
                         `endif
                     end
                 end
@@ -179,7 +211,7 @@ end
             if (decoder_done && (!rob_full)) begin
                 head    <= head + 1;
                 nxt_empty_ROB_id    <= head + 1;
-                rob_full    <= (!empty) && (!ready[tail]) && ((head + 1) == tail);
+                rob_full    <= (!empty) && ((head + 1'b1) == tail);
                 empty <= 1'b0;
                 type[head]  <= ROB_type;
                 PC[head]    <= inst_PC;
@@ -188,7 +220,7 @@ end
                 ready[head] <= inst_ready;
                 value[head] <= inst_ans;
                 `ifdef JY
-                    $fdisplay(log, "%t ROB push new inst: rob-id: %D; value: %D; inst-PC: %8H; inst-type: %2B; rd: %D; ready: %B; full: %B", $realtime, head, inst_ans, inst_PC, ROB_type, inst_rd, inst_ready, (!empty) && (!ready[tail]) && ((head + 1) == tail));
+                    $fdisplay(log, "%t ROB push new inst: rob-id: %D; value: %D; inst-PC: %8H; inst-type: %2B; rd: %D; ready: %B; full: %B", $realtime, head, inst_ans, inst_PC, ROB_type, inst_rd, inst_ready, (!empty) && (!ready[tail]) && ((head + 1'b1) == tail));
                 `endif
             end
             if (alu_config) begin

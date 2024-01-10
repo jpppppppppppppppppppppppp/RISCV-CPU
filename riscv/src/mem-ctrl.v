@@ -39,8 +39,6 @@ end
     reg     [2:0]   stage;
     reg     [2:0]   precise;
     reg     [5:0]   pos;
-    reg     [32:0]  last_pc;
-    reg     [4:0]   last_rob;
     genvar i;
     generate
         for (i = 0; i < 64; i = i + 1) begin
@@ -58,8 +56,6 @@ end
             ram_read_or_write   <= 1'b0;
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
-            last_pc <= 33'b100000000000000000000000000000000;
-            last_rob    <= 5'b10000;
         end
         else if (!rdy) begin
             `ifdef JY
@@ -79,19 +75,17 @@ end
             inst_out_config <= 1'b0;
             lsb_out_config  <= 1'b0;
             if ((statu == 2'b00) && (!rollback)) begin
-                if (inst_config && !(last_pc[32] != 1 && last_pc[31:0] == inst_PC)) begin
+                if (inst_config) begin
                     `ifdef JY
                         $fdisplay(log, "%t push inst get: pc: %8H;", $realtime, inst_PC);
                     `endif
                     buffer_addr <= {inst_PC[31:6], 6'b000000};
-                    last_pc <= {1'b0, inst_PC};
                     statu   <= 2'b01;
                 end
-                else if (lsb_config && !(last_rob[4] != 1 && last_rob[3:0] == lsb_rob)) begin
+                else if (lsb_config) begin
                     `ifdef JY
                         $fdisplay(log, "%t push lsb: addr: %8H; ls: %B; precise: %B", $realtime, lsb_addr, lsb_ls, lsb_precise);
                     `endif
-                    last_rob    <= {1'b0, lsb_rob};
                     buffer_addr <= lsb_addr;
                     statu   <= {1'b1, lsb_ls};
                     precise <= lsb_precise;
@@ -110,13 +104,13 @@ end
                 end
             end
             else if (statu == 2'b01) begin
-                
-                
-                
-                
-                
-                
-                
+                if (inst_out_config) begin
+                    inst_out_config <= 1'b0;
+                    statu   <= 2'b00;
+                    addr_to_ram <= 32'b0;
+                    ram_read_or_write   <= 1'b0;
+                end
+                else begin
                     buffer[pos]    <= data_read_in;
                     `ifdef JY
                         $fdisplay(log, "%t fetch inst get: value: %D", $realtime, data_read_in);
@@ -125,8 +119,9 @@ end
                         `ifdef JY
                             $fdisplay(log, "%t fetch inst end; change status;", $realtime);
                         `endif
-                        statu   <= 2'b00;
                         inst_out_config <= 1'b1;
+                        ram_read_or_write   <= 1'b0;
+                        addr_to_ram <= 32'b0;
                         ram_read_or_write   <= 1'b0;
                     end
                     else begin
@@ -146,17 +141,22 @@ end
                             pos <= pos + 1;
                         end
                     end
-                
+                end
             end
             else if (statu == 2'b10) begin
-                if ((buffer_addr[17:16] != 2'b11) || (!io_buffer_full)) begin
+                if (lsb_out_config) begin
+                    lsb_out_config  <= 1'b0;
+                    statu   <=  2'b00;
+                    addr_to_ram <= 32'b0;
+                    ram_read_or_write   <= 1'b0;
+                end
+                else if ((buffer_addr[17:16] != 2'b11) || (!io_buffer_full)) begin
                     if (stage == len) begin
                         ram_read_or_write   <= 1'b0;
                         addr_to_ram <= 32'b0;
                         `ifdef JY
                             $fdisplay(log, "%t store data end; change status;", $realtime);
                         `endif
-                        statu   <= 2'b00;
                         lsb_out_config  <= 1'b1;
                         stage   <= 3'b0;
                     end
@@ -177,7 +177,13 @@ end
                 end
             end
             else if (statu == 2'b11) begin
-                if (rollback) begin
+                if (lsb_out_config) begin
+                    lsb_out_config  <= 1'b0;
+                    statu   <= 2'b00;
+                    addr_to_ram <= 32'b0;
+                    ram_read_or_write   <= 1'b0;
+                end
+                else if (rollback) begin
                     `ifdef JY
                         $fdisplay(log, "%t load data stopped by rollback; %B", $realtime, rollback);
                     `endif
@@ -197,10 +203,9 @@ end
                     endcase
                     addr_to_ram <= buffer_addr + stage;
                     stage   <= stage + 1;
-                    if (stage == len + 1) begin
+                    if (stage == len + 1'b1) begin
                         stage   <= 3'b0;
                         lsb_out_config  <= 1'b1;
-                        statu   <= 2'b00;
                         addr_to_ram <= 32'b0;
                         if (precise == 3'b100) begin
                             lsb_out_data[31:8]  <= {24{data_read_in[7]}};

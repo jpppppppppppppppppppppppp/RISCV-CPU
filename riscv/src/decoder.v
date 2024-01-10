@@ -14,12 +14,12 @@ module decoder (
 
     // For immediate effect in the next clock, we use wire not reg
     // Query from Register File.
-    output  wire    [4:0]   rs1_index,
+    output  reg     [4:0]   rs1_index,
     input   wire            rs1_dirty,
     input   wire    [3:0]   rs1_rob_entry,
     input   wire    [31:0]  rs1_value,
 
-    output  wire    [4:0]   rs2_index,
+    output  reg     [4:0]   rs2_index,
     input   wire            rs2_dirty,
     input   wire    [3:0]   rs2_rob_entry,
     input   wire    [31:0]  rs2_value,
@@ -57,7 +57,8 @@ module decoder (
     output  reg             rob_ready,
     output  reg     [31:0]  rob_ans,
     input   wire    [3:0]   next_empty_rob_entry,
-
+    input   wire            rob_is_full,
+    input   wire            lsb_is_full,
     // JALR pause
     output  reg             JALR_need_pause,
     output  reg             JALR_pause_rej,
@@ -131,8 +132,6 @@ end
     // and [31:0] rd, [31:0] rs1, [31:0] rs2, [31:0] imm;
     
     // query for rs1 and rs2
-    assign  rs1_index   = inst[19:15];
-    assign  rs2_index   = inst[24:20];
     // query for rs1 and rs2 if rely on ROB
     assign  rs1_rob_q_entry = rs1_rob_entry;
     assign  rs2_rob_q_entry = rs2_rob_entry;
@@ -141,8 +140,10 @@ end
     reg     [3:0]   wait_for_rob;
     reg     [31:0]  offset;
 
-
+    
     always @(*) begin
+        rs1_index   = inst[19:15];
+        rs2_index   = inst[24:20];
         opcode  = inst[6:0];
         precise = inst[14:12];
         moreprecise = inst[30];
@@ -159,7 +160,6 @@ end
         rs_config   = 1'b0;
         rf_config   = 1'b0;
         rob_need    = next_empty_rob_entry;
-        JALR_need_pause = 1'b0;
         JALR_pause_rej  = 1'b0;
         is_jump = pred_jump;
         out_pc  = inst_PC;
@@ -170,21 +170,27 @@ end
         end
         else if (inst_rdy && rdy) begin
             if (is_wait) begin
+                $fdisplay(log, "%t wait for rob: %D;", $realtime, wait_for_rob);
                 if (alu_rob_config && (alu_rob_entry == wait_for_rob)) begin
                     is_wait = 1'b0;
                     JALR_pause_rej  = 1'b1;
                     JALR_need_pause = 1'b0;
                     JALR_PC = (alu_value + offset) & 32'b11111111111111111111111111111110;
+                    `ifdef JY
+                        $fdisplay(log, "%t alu back from JALR; new PC: %H; VAL: %H; OFF: %H;", $realtime, (alu_value + offset) & 32'b11111111111111111111111111111110, alu_value, offset);
+                    `endif
                 end
                 if (lsb_rob_config && (lsb_rob_entry == wait_for_rob)) begin
                     is_wait = 1'b0;
                     JALR_pause_rej  = 1'b1;
                     JALR_need_pause = 1'b0;
                     JALR_PC = (lsb_value + offset) & 32'b11111111111111111111111111111110;
+                    `ifdef JY
+                        $fdisplay(log, "%t lsb back from JALR; new PC: %H; VAL: %H; OFF: %H;", $realtime, (lsb_value + offset) & 32'b11111111111111111111111111111110, lsb_value, offset);
+                    `endif
                 end
             end
-            
-            else begin
+            else if (!(rob_is_full || lsb_is_full))begin
                 if (!rs1_dirty) begin
                     rs1_val = rs1_value;
                 end else if (rs1_rob_rdy) begin
@@ -197,7 +203,6 @@ end
                     rs1_need_rob    = 1'b1;
                     rs1_rob_id  = rs1_rob_entry;
                 end
-
                 if (!rs2_dirty) begin
                     rs2_val = rs2_value;
                 end else if (rs2_rob_rdy) begin
@@ -210,9 +215,6 @@ end
                     rs2_need_rob    = 1'b1;
                     rs2_rob_id  = rs2_rob_entry;
                 end
-                `ifdef JY
-                    $fdisplay(log, "PC: %D %8H; inst: %8H; opcode: %7B; Q1: %D %1B %D; Q2: %D %1B %D; rd: %D; rob: %D", inst_PC, inst_PC, inst, opcode, rs1_index, rs1_need_rob, rs1_rob_id, rs2_index, rs2_need_rob, rs2_rob_id, rd, rob_need);
-                `endif
                 case (opcode)
                     7'b0110111: begin   // LUI
                         `ifdef JY
@@ -264,7 +266,7 @@ end
                         rf_config   = 1'b1;
                         if (rs1_need_rob) begin
                             `ifdef JY
-                                $fdisplay(log, "%t JALR need pause;", $realtime);
+                                $fdisplay(log, "%t JALR need pause; rob: %D;", $realtime, rs1_rob_entry);
                             `endif
                             JALR_need_pause = 1'b1;
                             JALR_pause_rej  = 1'b0;
@@ -340,6 +342,9 @@ end
                     end
                 endcase
                 done    = 1'b1;
+                `ifdef JY
+                    $fdisplay(log, "%t PC: %D %8H; inst: %8H; opcode: %7B; Q1: %D %1B %D; Q2: %D %1B %D; rd: %D; rob: %D",$realtime, inst_PC, inst_PC, inst, opcode, rs1_index, rs1_need_rob, rs1_rob_id, rs2_index, rs2_need_rob, rs2_rob_id, rd, rob_need);
+                `endif
             end
         end
     end

@@ -126,6 +126,7 @@ module cpu(
   wire          rf_rs2_dirty;
   wire  [3:0]   rf_rs2_rob2;
   wire  [31:0]  rf_rs2_val;
+  wire          lsb_full;
   `ifdef JY
   wire  [1023:0]  debugger;
   `endif
@@ -184,7 +185,8 @@ module cpu(
     .inst_rs2_val                 (decoder_rs2_value),
     .inst_rs2_need_ROB            (decoder_rs2_need_rob),
     .inst_rs2_ROB_id              (decoder_rs2_rob2),
-    .inst_imm                     (decoder_imm)
+    .inst_imm                     (decoder_imm),
+    .lsb_is_full                  (lsb_full)
   );
 
   mem_ctrl cpu_mem_ctrl(
@@ -257,6 +259,8 @@ module cpu(
     .rob_ready                    (decoder_rob_ready),
     .rob_ans                      (decoder_ans),
     .next_empty_rob_entry         (rob_nxt_empty_ROB_id),
+    .rob_is_full                  (rob_full),
+    .lsb_is_full                  (lsb_full),
     .JALR_need_pause              (decoder_JALR_need_pause),
     .JALR_pause_rej               (decoder_JALR_pause_rej),
     .JALR_PC                      (decoder_JALR_PC),
@@ -288,7 +292,8 @@ module cpu(
     .rob_is_full                  (rob_full),
     .JALR_need_pause              (decoder_JALR_need_pause),
     .JALR_pause_rej               (decoder_JALR_pause_rej),
-    .JALR_PC                      (decoder_JALR_PC)
+    .JALR_PC                      (decoder_JALR_PC),
+    .lsb_is_full                  (lsb_full)
   );
 
   reservestation cpu_reservestation(
