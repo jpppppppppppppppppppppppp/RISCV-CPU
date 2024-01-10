@@ -24,10 +24,10 @@ module ALU(
     output  reg     [3:0]   out_rob_entry,
     output  reg             out_config
 );
-integer log;
-initial begin
-    log = $fopen("alu.log", "w");
-end
+
+
+
+
     // handle add(i) sub sll(i) slt(i) slt(i)u xor(i) srl(i) sra(i) or(i) and(i)
     wire    [31:0]  opt1      = in_a;
     wire    [31:0]  opt2      = (in_opcode == 7'b0010011) ? in_imm : in_b;
@@ -98,7 +98,7 @@ end
     always @(posedge clk) begin
         if(rst || rollback_config) begin
 
-                $fdisplay(log, "%t ALU reset: rst: %B rollback: %B", $realtime, rst, rollback_config);
+                
 
             out_val <= 32'b0;
             out_need_jump   <= 1'b0;
@@ -112,20 +112,21 @@ end
                 out_rob_entry   <= in_rob_entry;
                 if (in_config) begin
 
-                        $fdisplay(log, "%t ALU in_config: rob-id: %D;", $realtime, in_rob_entry);
+                        
+                        
 
                     out_config  <= 1'b1;
                     case (in_opcode)
                     7'b0010111: begin // AUIPC
                         out_val <= in_PC + in_imm;
 
-                            $fdisplay(log, "%t ALU AUIPC: in_PC: %8H; in_imm: %D; out_val: %8H", $realtime, in_PC, in_imm, in_PC + in_imm);
+                            
 
                     end
                     7'b1101111: begin // JAL
                         out_val <= in_PC + 4;
 
-                            $fdisplay(log, "%t ALU JAL: in_PC: %8H; out_val: %8H;", $realtime, in_PC, in_PC + 4);
+                            
 
                     end
                     7'b1100011: begin // branch
@@ -133,12 +134,12 @@ end
                             out_need_jump   <= 1'b1;
                             out_jump_pc <= in_PC + in_imm;
 
-                                $fdisplay(log, "%t ALU branch: type: %B; opt1: %D; opt2: %D; jump_PC: %8H; PC: %8H; imm: %D;", $realtime, in_precise, opt1, opt2, in_PC + in_imm, in_PC, in_imm);
+                                
 
                         end
                         else begin
 
-                                $fdisplay(log, "%t ALU branch don't jump: type: %B; opt1: %D; opt2: %D; jump_PC: %8H; PC: %8H; imm: %D;", $realtime, in_precise, opt1, opt2, in_PC + 4, in_PC, in_imm);
+                                
 
                             out_need_jump   <= 1'b0;
                             out_jump_pc <= in_PC + 4;
@@ -146,7 +147,7 @@ end
                     end
                     7'b0010011, 7'b0110011: begin // OP
 
-                            $fdisplay(log, "%t ALU op: type: %B; precisemore: %B; opt1: %D; opt2: %D; ans: %D;", $realtime, in_precise, in_more_precise, opt1, opt2, optans);
+                            
 
                         out_val <= optans;
                     end

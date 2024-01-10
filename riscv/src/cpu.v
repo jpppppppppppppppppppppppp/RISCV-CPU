@@ -2,7 +2,7 @@
 // port modification allowed for debugging purposes
 `ifndef CPU
 `define CPU
-`define JY
+
 `include "alu.v"
 `include "decoder.v"
 `include "ifetch.v"
