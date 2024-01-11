@@ -23,7 +23,7 @@ module cpu(
 	
 	input  wire                 io_buffer_full, // 1 if uart buffer is full
 	
-	output wire [31:0]			dbgreg_dout		// cpu register output (debugging demo)
+	output wire [31:0]			    dbgreg_dout		// cpu register output (debugging demo)
 );
 
 // implementation goes here
@@ -128,6 +128,7 @@ module cpu(
   wire  [31:0]  rf_rs2_val;
   wire          lsb_full;
   wire          JALR;
+
   `ifdef JY
   wire  [1023:0]  debugger;
   `endif
@@ -353,9 +354,11 @@ module cpu(
     .commit_rob_id                (rob_commit_reg_rob),
     .decoder_done                 (decoder_rf_config),
     .rd                           (decoder_rd),
+
     `ifdef JY
     .allregs                      (debugger),
     `endif
+    
     .rob_need                     (decoder_rob_entry)
   );
 

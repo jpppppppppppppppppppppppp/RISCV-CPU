@@ -24,10 +24,6 @@ module ALU(
     output  reg     [3:0]   out_rob_entry,
     output  reg             out_config
 );
-
-
-
-
     // handle add(i) sub sll(i) slt(i) slt(i)u xor(i) srl(i) sra(i) or(i) and(i)
     wire    [31:0]  opt1      = in_a;
     wire    [31:0]  opt2      = (in_opcode == 7'b0010011) ? in_imm : in_b;
@@ -97,9 +93,6 @@ module ALU(
 
     always @(posedge clk) begin
         if(rst || rollback_config) begin
-
-                
-
             out_val <= 32'b0;
             out_need_jump   <= 1'b0;
             out_jump_pc <= 32'b0;
@@ -111,44 +104,25 @@ module ALU(
                 out_config  <= 1'b0;
                 out_rob_entry   <= in_rob_entry;
                 if (in_config) begin
-
-                        
-                        
-
                     out_config  <= 1'b1;
                     case (in_opcode)
                     7'b0010111: begin // AUIPC
                         out_val <= in_PC + in_imm;
-
-                            
-
                     end
                     7'b1101111: begin // JAL
                         out_val <= in_PC + 4;
-
-                            
-
                     end
                     7'b1100011: begin // branch
                         if (is_jump) begin
                             out_need_jump   <= 1'b1;
                             out_jump_pc <= in_PC + in_imm;
-
-                                
-
                         end
                         else begin
-
-                                
-
                             out_need_jump   <= 1'b0;
                             out_jump_pc <= in_PC + 4;
                         end
                     end
-                    7'b0010011, 7'b0110011: begin // OP
-
-                            
-
+                    7'b0010011, 7'b0110011: begin // OP        
                         out_val <= optans;
                     end
                 endcase
